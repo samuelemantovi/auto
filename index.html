@@ -67,6 +67,40 @@ button.row:active{background:var(--fill)}
 .tile .n small{font-size:15px;font-weight:500;color:var(--ink2);margin-left:2px}
 .dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex:none}
 
+/* Scheda auto */
+.hero{border-radius:16px;overflow:hidden;position:relative;padding:4px 16px 14px;
+  background:radial-gradient(120% 90% at 50% 0%,#FFFFFF 0%,#E9EBEF 55%,#DADDE2 100%)}
+@media (prefers-color-scheme: dark){.hero{background:radial-gradient(120% 90% at 50% 0%,#3A3A3E 0%,#232326 55%,#1C1C1E 100%)}}
+.hero svg.car{display:block;width:100%;height:auto;margin:6px 0 2px}
+.hero.anim svg.car{animation:drive .9s cubic-bezier(.2,.9,.25,1)}
+@keyframes drive{from{transform:translateX(-14%);opacity:0}to{transform:none;opacity:1}}
+.hero .sub{font-size:15px;color:var(--ink2);text-align:center}
+.hero.has-photo{padding-top:0}
+.hero img.photo{display:block;width:calc(100% + 32px);height:auto;max-height:260px;margin:0 -16px 12px;object-fit:contain}
+.hero.anim img.photo{animation:fade .6s ease}
+.quick{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px}
+.quick button{background:var(--card);border-radius:12px;padding:10px 4px;display:flex;flex-direction:column;align-items:center;gap:4px;font-size:13px;font-weight:500;color:var(--blue)}
+.quick button:active{opacity:.6}
+.quick svg{width:22px;height:22px}
+.tile.wide{grid-column:1/-1}
+.tile .s{font-size:13px;color:var(--ink2);margin-top:4px;line-height:1.35}
+.tile.save .n{color:var(--green)}
+/* Scorri per eliminare */
+.sw{position:relative;overflow:hidden}
+.sw+.sw .row::before{content:"";position:absolute;top:0;left:16px;right:0;border-top:.5px solid var(--sep)}
+.sw .row{background:var(--card);transition:transform .25s ease;touch-action:pan-y;position:relative;z-index:1}
+.sw.drag .row{transition:none}
+.sw .del{position:absolute;right:0;top:0;bottom:0;width:88px;background:var(--red);color:#fff;font-size:15px;font-weight:500;visibility:hidden}
+.sw.drag .del,.sw.open .del{visibility:visible}
+.switch{position:relative;width:51px;height:31px;flex:none;-webkit-appearance:none;appearance:none;background:var(--fill);border-radius:16px;transition:background .2s;cursor:pointer;margin:0}
+.switch::after{content:"";position:absolute;top:2px;left:2px;width:27px;height:27px;border-radius:50%;background:#fff;box-shadow:0 3px 8px rgba(0,0,0,.15);transition:transform .2s}
+.switch:checked{background:var(--green)}.switch:checked::after{transform:translateX(20px)}
+.hero .stats{display:grid;grid-template-columns:repeat(3,1fr);margin-top:12px;border-top:.5px solid var(--sep);padding-top:12px}
+.hero .stats div{text-align:center}
+.hero .stats div+div{border-left:.5px solid var(--sep)}
+.hero .stats b{display:block;font-size:17px;font-weight:600}
+.hero .stats span{font-size:12px;color:var(--ink2)}
+
 /* Segmented control */
 .segc{display:flex;background:var(--fill);border-radius:9px;padding:2px;margin:0 0 4px}
 .segc button{flex:1;font-size:13px;font-weight:500;padding:6px 4px;border-radius:7px}
@@ -126,7 +160,7 @@ svg.plot .sel{fill:var(--fill)}
 .danger{color:var(--red);width:100%;text-align:center;justify-content:center}
 .btn{color:var(--blue);justify-content:center;text-align:center;width:100%}
 .toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top) + 12px);transform:translate(-50%,-150%);background:var(--card);
-  color:var(--ink);padding:10px 18px;border-radius:20px;box-shadow:0 6px 24px rgba(0,0,0,.18);z-index:40;transition:transform .3s;font-size:15px}
+  color:var(--ink);padding:10px 18px;border-radius:20px;white-space:nowrap;box-shadow:0 6px 24px rgba(0,0,0,.18);z-index:40;transition:transform .3s;font-size:15px}
 .toast.on{transform:translate(-50%,0)}
 table.rep{width:100%;border-collapse:collapse;font-size:13px}
 table.rep th,table.rep td{padding:9px 6px;text-align:right;white-space:nowrap}
@@ -190,6 +224,7 @@ table.rep tr+tr td{border-top:.5px solid var(--sep)}
 <div class="sheet" id="sheet"></div>
 <div class="toast" id="toast"></div>
 <input type="file" id="fileIn" accept="application/json,.json" hidden>
+<input type="file" id="photoIn" accept="image/*" hidden>
 
 <script>
 'use strict';
@@ -197,11 +232,12 @@ table.rep tr+tr td{border-top:.5px solid var(--sep)}
 const KEY = 'jaecoo7-data';
 const DEFAULT = {
   version: 1,
-  settings: { carName: 'Jaecoo 7', capacity: 18.3, loss: 10 },
+  settings: { carName: 'Jaecoo 7', carSub: 'SHS-P · 2026 · Moonlight Silver', carColor: '#C3C7CC', capacity: 18.3, loss: 10,
+    petrolRef: 6.0, serviceKm: 15000, serviceMonths: 12, regDate: '' },
   tariffs: [], charges: [], fuel: [], odo: [], maint: [], fees: []
 };
 let db = load();
-const state = { page: 'home', chargeView: 'list', fuelView: 'list', costTab: 'maint', range: '6', chartSel: null, kmSel: null };
+const state = { page: 'home', chargeView: 'list', fuelView: 'list', costTab: 'maint', range: '6', chartSel: null, kmSel: null, trendSel: null };
 
 function load() {
   try {
@@ -210,7 +246,7 @@ function load() {
   } catch (e) {}
   return structuredClone(DEFAULT);
 }
-function save() { localStorage.setItem(KEY, JSON.stringify(db)); render(); }
+function save() { _odo = null; localStorage.setItem(KEY, JSON.stringify(db)); render(); }
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 const byDate = (a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0;
 
@@ -245,12 +281,21 @@ const kwhGrid = c => c.place === 'casa' ? kwhBatt(c) * (1 + db.settings.loss / 1
 const chargeCost = c => c.place === 'casa' ? kwhGrid(c) * (tariffAt(c.date) ?? 0) : (c.cost || 0);
 const liters = f => f.ppl ? f.total / f.ppl : 0;
 
-const odoSorted = () => [...db.odo].sort(byDate);
+// Letture km: quelle inserite a mano + i km scritti in ricariche, rifornimenti e manutenzioni
+let _odo = null; // cache, azzerata a ogni salvataggio
+function odoSorted() {
+  if (_odo) return _odo;
+  const all = [...db.odo.map(o => ({ ...o, src: 'odo' })),
+    ...db.charges.filter(c => c.km).map(c => ({ id: c.id, date: c.date, km: c.km, src: 'charge' })),
+    ...db.fuel.filter(f => f.km).map(f => ({ id: f.id, date: f.date, km: f.km, src: 'fuel' })),
+    ...db.maint.filter(m => m.km).map(m => ({ id: m.id, date: m.date, km: m.km, src: 'maint' }))];
+  return _odo = all.sort((a, b) => byDate(a, b) || a.km - b.km);
+}
 function kmAt(date) {
   const o = odoSorted();
   if (!o.length || date < o[0].date || date > o[o.length - 1].date) return null;
   for (let i = 0; i < o.length; i++) {
-    if (o[i].date === date) return o[i].km;
+    if (o[i].date === date) { let j = i; while (o[j + 1] && o[j + 1].date === date) j++; return o[j].km; }
     if (o[i].date > date) {
       const a = o[i - 1], b = o[i];
       return a.km + (b.km - a.km) * (days(date) - days(a.date)) / (days(b.date) - days(a.date));
@@ -308,7 +353,63 @@ function periodStats(months) {
     const ov = Math.min(fe2, days(last)) - Math.max(fs, days(start));
     if (ov > 0 && fe2 > fs) fees += (f.cost || 0) * ov / (fe2 - fs);
   }
-  return { start, end: last, km: r.km, el, kwh, fe, fl, mt, fees, energy: el + fe };
+  // Risparmio: quanto sarebbe costato fare gli stessi km solo a benzina (ibrido senza ricaricare)
+  const lastF = [...db.fuel].sort(byDate).pop();
+  const ppl = fl > 0 ? fe / fl : lastF ? lastF.ppl : null;
+  const petrolOnly = ppl ? r.km * db.settings.petrolRef / 100 * ppl : null;
+  return { start, end: last, km: r.km, el, kwh, fe, fl, mt, fees, energy: el + fe, ppl, petrolOnly, saving: petrolOnly != null ? petrolOnly - (el + fe) : null };
+}
+
+// Consumo reale "pieno-pieno": litri messi dopo un pieno fino al pieno successivo (compreso) / km percorsi
+function fullToFull() {
+  const fu = [...db.fuel].sort(byDate), out = [];
+  let prev = null, acc = 0;
+  for (const f of fu) {
+    if (prev) acc += liters(f);
+    if (f.full) {
+      if (prev) {
+        const k0 = prev.km ?? kmAt(prev.date), k1 = f.km ?? kmAt(f.date);
+        if (k0 != null && k1 != null && k1 > k0) out.push({ from: prev.date, to: f.date, km: k1 - k0, l: acc, est: !(prev.km && f.km) });
+      }
+      prev = f; acc = 0;
+    }
+  }
+  return out;
+}
+
+// Scadenze: assicurazione/bollo (dalla data di scadenza), revisione, tagliando
+const addYears = (d, n) => (+d.slice(0, 4) + n) + d.slice(4);
+function kmPerDay() {
+  const o = odoSorted(); if (o.length < 2) return null;
+  const b = o[o.length - 1], from = fromDays(days(b.date) - 90);
+  const a = o.find(x => x.date >= from) || o[0];
+  const dd = days(b.date) - days(a.date);
+  return dd > 0 ? (b.km - a.km) / dd : null;
+}
+const isService = m => m.service ?? /tagliand/i.test(m.desc || '');
+function deadlines() {
+  const out = [], s = db.settings, by = {};
+  for (const f of db.fees) if (f.expiry && (!by[f.type] || f.expiry > by[f.type].expiry)) by[f.type] = f;
+  for (const t of ['Assicurazione', 'Bollo', 'Altro']) if (by[t]) out.push({ label: t, date: by[t].expiry });
+  // Revisione: dopo 4 anni dall'immatricolazione, poi ogni 2 anni
+  if (by.Revisione) out.push({ label: 'Revisione', date: by.Revisione.expiry });
+  else if (s.regDate) out.push({ label: 'Revisione', date: addYears(s.regDate, 4), sub: 'prima revisione' });
+  else out.push({ label: 'Revisione', date: null, sub: 'Imposta la data di immatricolazione', action: 'openSettings()' });
+  // Tagliando: ogni N km o N mesi, quello che arriva prima
+  const last = [...db.maint].filter(isService).sort(byDate).pop();
+  const baseDate = last ? last.date : s.regDate;
+  if (baseDate) {
+    const byTime = fromDays(days(baseDate) + Math.round(s.serviceMonths * 30.44));
+    const o = odoSorted(), cur = o.length ? o[o.length - 1] : null, rate = kmPerDay();
+    const baseKm = last ? (last.km ?? kmAt(last.date)) : 0;
+    let kmLeft = null, date = byTime;
+    if (cur && baseKm != null) {
+      kmLeft = baseKm + s.serviceKm - cur.km;
+      if (rate > 0) { const byKm = fromDays(days(cur.date) + Math.round(kmLeft / rate)); if (byKm < date) date = byKm; }
+    }
+    out.push({ label: 'Tagliando', date, kmLeft, sub: kmLeft != null ? `tra ${F0.format(Math.max(0, kmLeft))} km o entro il ${dLabel(byTime)}` : `entro il ${dLabel(byTime)}` });
+  }
+  return out.sort((a, b) => !a.date ? 1 : !b.date ? -1 : a.date < b.date ? -1 : 1);
 }
 
 /* ================= Render ================= */
@@ -319,29 +420,114 @@ function render() {
 const tile = (label, value, unit, dot) =>
   `<div class="tile"><div class="l">${dot ? `<i class="dot" style="background:var(${dot})"></i>` : ''}${label}</div><div class="n num">${value}${unit ? `<small>${unit}</small>` : ''}</div></div>`;
 
+/* Illustrazione dell'auto: SUV compatto visto di lato, colore carrozzeria dalle impostazioni */
+function shade(hex, t) { // t>0 schiarisce verso il bianco, t<0 scurisce verso il nero
+  const n = parseInt((hex || '#C3C7CC').slice(1), 16), c = [n >> 16, (n >> 8) & 255, n & 255];
+  return '#' + c.map(v => Math.round(t > 0 ? v + (255 - v) * t : v * (1 + t)).toString(16).padStart(2, '0')).join('');
+}
+function carSvg(color) {
+  // Disegnata col muso a destra e poi specchiata: l'auto guarda a sinistra come nella foto ufficiale di profilo.
+  // Elementi tipici: muso alto e verticale con calandra a lamelle, cofano lungo e piatto, tetto "flottante"
+  // con montanti neri e spoiler, passaruota e minigonne nere spesse, modanatura nera sulle porte, cerchi bicolore.
+  const wheel = (cx) => `<g transform="translate(${cx} 100)">
+    <circle r="24" fill="#141516"/><circle r="18.5" fill="#24262A"/>
+    ${Array.from({ length: 10 }, (_, i) => `<path d="M-0.9,-4.5 L-1.6,-17.6 L1.6,-17.6 L0.9,-4.5 Z" fill="url(#spoke)" transform="rotate(${i * 36 + (i % 2 ? -7 : 7)})"/>`).join('')}
+    <circle r="18.5" fill="none" stroke="#B9BEC5" stroke-width="1"/><circle r="4.6" fill="#3A3D42"/><circle r="2" fill="#9DA3AB"/></g>`;
+  const B = 'M24,100 Q20,100 20,96 L19,58 Q19,48 23,42 L29,24 Q31,16 40,15 L178,13 Q187,13 192,18 L222,44 Q226,47 234,47.5 L291,49 Q300,49.5 301,56 L302,96 Q302,100 298,100 Z';
+  const dark = '#141618';
+  return `<svg class="car" viewBox="0 0 320 130" role="img" aria-label="Illustrazione della Jaecoo 7">
+  <defs>
+    <linearGradient id="body" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${shade(color, .66)}"/><stop offset=".45" stop-color="${shade(color, .18)}"/><stop offset=".6" stop-color="${shade(color, 0)}"/><stop offset="1" stop-color="${shade(color, -.34)}"/></linearGradient>
+    <linearGradient id="sheen" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".5" stop-color="#fff" stop-opacity=".32"/><stop offset=".66" stop-color="#fff" stop-opacity="0"/></linearGradient>
+    <linearGradient id="glass" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#46515F"/><stop offset="1" stop-color="#101418"/></linearGradient>
+    <linearGradient id="spoke" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F2F4F6"/><stop offset="1" stop-color="#A9AFB7"/></linearGradient>
+    <filter id="blur" x="-10%" y="-200%" width="120%" height="500%"><feGaussianBlur stdDeviation="3"/></filter>
+    <mask id="arches"><rect width="320" height="130" fill="#fff"/><circle cx="74" cy="100" r="29.5" fill="#000"/><circle cx="246" cy="100" r="29.5" fill="#000"/></mask>
+  </defs>
+  <ellipse cx="160" cy="124" rx="150" ry="5" fill="#000" opacity=".3" filter="url(#blur)"/>
+  <g transform="translate(320 0) scale(-1 1)">
+    <g mask="url(#arches)">
+      <path d="${B}" fill="url(#body)"/>
+      <path d="${B}" fill="url(#sheen)" opacity=".55"/>
+      <!-- paraurti e minigonne neri -->
+      <path d="M20,100 L20,88 L42,88 L42,100 Z M100,100 L102,91 L218,90 L220,100 Z M274,100 L276,89 L302,86 L302,96 Q302,100 298,100 Z" fill="${dark}"/>
+    </g>
+    <!-- passaruota spessi -->
+    <path d="M41,100 A33,33 0 0 1 107,100 M213,100 A33,33 0 0 1 279,100" fill="none" stroke="${dark}" stroke-width="6.5"/>
+    <!-- vetratura: cornice nera (tetto flottante) e vetri -->
+    <path d="M27,42 L32,24 Q34,19.5 42,19.3 L176,17.3 Q183,17.3 187,21 L214,46.5 L32,47.5 Q26,47.5 27,42 Z" fill="${dark}"/>
+    <path d="M44,22.4 L66,22 L68,44.5 L38,44.5 Q35.5,44.5 36,41.5 Z" fill="url(#glass)"/>
+    <path d="M72,21.9 L128,20.6 L129,44.5 L74,44.5 Z" fill="url(#glass)"/>
+    <path d="M135,20.5 L176,19.8 Q181,19.8 184,22.6 L207,44.5 L136,44.5 Z" fill="url(#glass)"/>
+    <path d="M150,20.3 L168,20 L148,44.5 L138,44.5 Z M96,21.4 L108,21.1 L92,44.5 L84,44.5 Z" fill="#fff" opacity=".07"/>
+    <!-- spoiler posteriore -->
+    <path d="M27,22 Q29,14.5 39,14 L58,13.6 L58,16.6 L37,17.4 Q32,17.8 30.5,22.5 Z" fill="${dark}"/>
+    <!-- linee di carrozzeria -->
+    <path d="M22,56 Q160,52.5 298,56.5" fill="none" stroke="#fff" stroke-opacity=".8" stroke-width="1.1"/>
+    <path d="M70,48 L71,70 M132,48 L133,90 M213,47.5 L211,72" fill="none" stroke="#000" stroke-opacity=".22" stroke-width=".8"/>
+    <path d="M110,83.5 L208,82.5" stroke="${dark}" stroke-width="2.6" stroke-linecap="round"/>
+    <rect x="104" y="56" width="13" height="2.6" rx="1.3" fill="#000" opacity=".28"/><rect x="176" y="55.5" width="13" height="2.6" rx="1.3" fill="#000" opacity=".28"/>
+    <rect x="36" y="58" width="11" height="9" rx="2.5" fill="none" stroke="#000" stroke-opacity=".2" stroke-width=".8"/>
+    <!-- specchietto nero -->
+    <path d="M205,41 Q211,36 220,38.5 L220,46.5 L207,46.5 Z" fill="${dark}"/>
+    <!-- muso: calandra verticale a lamelle, faro LED sottile, luci basse -->
+    <path d="M297,57 L301.6,57 L302,84 L297.6,84 Z" fill="${dark}"/>
+    <path d="M299,59 L299.3,82" stroke="#C9CED4" stroke-width=".7"/>
+    <path d="M280,50.5 L300,52" stroke="#F4F8FF" stroke-width="2.6" stroke-linecap="round"/>
+    <rect x="287" y="64" width="7" height="11" rx="1.5" fill="${dark}"/>
+    <!-- luce posteriore verticale -->
+    <path d="M20.5,45 L20.5,60" stroke="#E0243A" stroke-width="2.6" stroke-linecap="round"/>
+  </g>
+  ${wheel(320 - 74)}${wheel(320 - 246)}
+</svg>`;
+}
+function heroCard() {
+  const s = db.settings, o = odoSorted(), lastO = o[o.length - 1];
+  const lastC = [...db.charges].sort(byDate).pop();
+  const due = deadlines().find(x => x.date), dd = due ? Math.round(days(due.date) - days(today())) : null;
+  const anim = !heroCard.done; heroCard.done = true; // animazione d'ingresso solo all'apertura
+  const photo = getPhoto();
+  return `<div class="hero${anim ? ' anim' : ''}${photo ? ' has-photo' : ''}">${photo ? `<img class="photo" src="${photo}" alt="La mia auto">` : carSvg(s.carColor)}
+    ${s.carSub ? `<div class="sub">${esc(s.carSub)}</div>` : ''}
+    <div class="stats num">
+      <div><b>${lastO ? F0.format(lastO.km) : '–'}</b><span>km${lastO ? ' al ' + dShort(lastO.date) : ''}</span></div>
+      <div><b>${lastC ? lastC.end + '%' : '–'}</b><span>${lastC ? 'carica ' + dShort(lastC.date) : 'ultima carica'}</span></div>
+      <div><b>${dd != null ? dd + ' gg' : '–'}</b><span>${due ? esc(due.label.toLowerCase()) : 'scadenze'}</span></div>
+    </div></div>`;
+}
+
 function renderHome() {
   const k = mk(today()), m = monthStats(k);
-  let h = `<h2>${mLabel(k)}</h2><div class="tiles">
-    ${tile('Km', m.km != null ? F0.format(m.km) : '–', m.kmPartial ? ' fin qui' : '')}
+  const kmTile = m.km != null ? tile('Km', F0.format(m.km), m.kmPartial ? ' fin qui' : '')
+    : `<button class="tile" onclick="editOdo()" style="text-align:left"><div class="l">Km</div><div class="n" style="color:var(--blue);font-size:17px;margin-top:10px">+ Aggiungi lettura</div></button>`;
+  let h = heroCard() + `<div class="quick">
+      <button onclick="editCharge()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg>Ricarica</button>
+      <button onclick="editFuel()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v16M3 21h12M4 10h10"/><path d="M14 8h2a2 2 0 0 1 2 2v6a1.5 1.5 0 0 0 3 0V9l-3-3"/></svg>Benzina</button>
+      <button onclick="editOdo()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 18a8 8 0 1 1 16 0"/><path d="M12 18l4-5"/></svg>Km</button>
+    </div>
+    <h2>${mLabel(k)}</h2><div class="tiles">
+    ${kmTile}
     ${tile('Spesa energia', F2.format(m.el + m.fuelEur), '€')}
     ${tile('Elettricità', F2.format(m.el), '€', '--el')}
     ${tile('Benzina', F2.format(m.fuelEur), '€', '--fuel')}
   </div>`;
 
   // Scadenze
-  const due = latestFees();
+  const due = deadlines();
   if (due.length) {
     h += `<h2>Scadenze</h2><div class="group">` + due.map(f => {
-      const d = Math.round(days(f.expiry) - days(today()));
-      const cls = d < 0 ? 'bad' : d <= 30 ? 'warn' : '';
+      if (!f.date) return `<button class="row" onclick="${f.action}"><div class="main"><div class="t">${esc(f.label)}</div><div class="s">${esc(f.sub)}</div></div><span class="chev">›</span></button>`;
+      const d = Math.round(days(f.date) - days(today()));
+      const cls = d < 0 || (f.kmLeft != null && f.kmLeft < 0) ? 'bad' : d <= 30 || (f.kmLeft != null && f.kmLeft < 1000) ? 'warn' : '';
       const txt = d < 0 ? `scaduta da ${-d} gg` : d === 0 ? 'oggi' : `tra ${d} gg`;
-      return `<div class="row"><div class="main"><div class="t">${esc(f.type)}</div><div class="s">${dLabel(f.expiry)}</div></div><div class="v"><span class="pill ${cls}">${txt}</span></div></div>`;
+      return `<div class="row"><div class="main"><div class="t">${esc(f.label)}</div><div class="s">${f.label === 'Tagliando' ? 'stimato ' + dLabel(f.date) + ' · ' + esc(f.sub) : dLabel(f.date) + (f.sub ? ' · ' + esc(f.sub) : '')}</div></div><div class="v"><span class="pill ${cls}">${txt}</span></div></div>`;
     }).join('') + `</div>`;
   }
 
   // Grafico spesa mensile
   const months = allMonths().slice(-6);
   h += `<h2>Spesa energia mensile</h2>` + spendChart(months);
+  h += `<h2>Andamento costo per km</h2>` + trendChart();
 
   // Statistiche
   const R = state.range;
@@ -358,8 +544,10 @@ function renderHome() {
       ${tile('Elettricità', F1.format(p.kwh / k100), 'kWh/100 km', '--el')}
       ${tile('Quota elettrica', p.energy ? F0.format(p.el / p.energy * 100) : '–', '% spesa')}
       ${tile('Tutto incluso', F2.format((p.energy + p.mt + p.fees) / p.km), '€/km')}
+      ${p.saving != null ? `<div class="tile wide save"><div class="l">Risparmio rispetto a solo benzina</div><div class="n num">${F0.format(p.saving)}<small>€</small></div>
+        <div class="s num">Solo benzina avresti speso circa ${eur(p.petrolOnly)} (${F1.format(db.settings.petrolRef)} L/100 km a ${F3.format(p.ppl)} €/L), invece di ${eur(p.energy)}.</div></div>` : ''}
     </div>
-    <p class="note">Dal ${dLabel(p.start)} al ${dLabel(p.end)} (ultima lettura km). Consumi medi su tutti i km percorsi: benzina e kWh acquistati nel periodo divisi per i km. Più lungo è il periodo, più il dato è affidabile. "Tutto incluso" aggiunge manutenzioni e la quota di assicurazione e bollo.</p>`;
+    <p class="note">Dal ${dLabel(p.start)} al ${dLabel(p.end)} (ultima lettura km). Consumi medi su tutti i km percorsi: benzina e kWh acquistati nel periodo divisi per i km. Più lungo è il periodo, più il dato è affidabile. "Tutto incluso" aggiunge manutenzioni e la quota di assicurazione e bollo. Il consumo "solo benzina" di riferimento si imposta nelle Impostazioni.</p>`;
   }
 
   // Report mensile
@@ -372,6 +560,7 @@ function renderHome() {
 
   document.getElementById('home').innerHTML = h;
   bindSeg('seg-range', v => { state.range = v; render(); });
+  bindChart('trend', i => { state.trendSel = state.trendSel === i ? null : i; render(); });
   bindChart('spend', i => { state.chartSel = state.chartSel === i ? null : i; render(); });
 }
 
@@ -409,6 +598,31 @@ function spendChart(months) {
   return `<div class="chart" id="spend"><div class="head">${head}</div><svg class="plot" viewBox="0 0 ${W} ${H}" role="img" aria-label="Spesa mensile elettricità e benzina">${g}</svg>
     <div class="legend"><span><i class="dot" style="background:var(--el)"></i>Elettricità</span><span><i class="dot" style="background:var(--fuel)"></i>Benzina</span></div></div>`;
 }
+/* Linea del €/100 km per i mesi completi (ultimi 12) */
+function trendChart() {
+  const data = allMonths().map(monthStats).filter(s => s.km > 0 && !s.kmPartial).slice(-12)
+    .map(s => ({ k: s.k, v: (s.el + s.fuelEur) / s.km * 100, el: s.el / s.km * 100 }));
+  if (data.length < 2) return `<div class="group"><div class="empty">Servono almeno due mesi completi di letture km.</div></div>`;
+  const W = 340, H = 150, pl = 30, pb = 20, pt = 10, iw = W - pl - 10, ih = H - pb - pt;
+  const max = Math.max(...data.map(d => d.v)), step = niceStep(max / 3), top = Math.ceil(max / step) * step;
+  const x = i => pl + iw * i / (data.length - 1), y = v => pt + ih - v / top * ih;
+  let g = '';
+  for (let v = 0; v <= top + 1e-9; v += step) g += `<line class="grid" x1="${pl}" x2="${W - 4}" y1="${y(v)}" y2="${y(v)}"/><text x="${pl - 6}" y="${y(v) + 4}" text-anchor="end">${F0.format(v)}</text>`;
+  const sel = state.trendSel;
+  if (sel != null && data[sel]) g += `<line x1="${x(sel)}" x2="${x(sel)}" y1="${pt}" y2="${pt + ih}" stroke="var(--ink3)" stroke-width="1"/>`;
+  g += `<path d="${data.map((d, i) => (i ? 'L' : 'M') + x(i).toFixed(1) + ',' + y(d.v).toFixed(1)).join('')}" fill="none" stroke="var(--ink)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
+  data.forEach((d, i) => {
+    g += `<circle cx="${x(i)}" cy="${y(d.v)}" r="${sel === i ? 5 : 3.5}" fill="var(--ink)" stroke="var(--card)" stroke-width="2"/>`;
+    if (data.length <= 8 || i % 2 === (data.length - 1) % 2) g += `<text x="${x(i)}" y="${H - 4}" text-anchor="middle">${mShort(d.k)}</text>`;
+    const w = iw / (data.length - 1);
+    g += `<rect class="hit" data-i="${i}" x="${x(i) - w / 2}" y="0" width="${w}" height="${H}"/>`;
+  });
+  const avg = data.reduce((t, d) => t + d.v, 0) / data.length, s = sel != null ? data[sel] : null;
+  const head = s ? `<div><div class="sub">${mLabel(s.k)}</div><div class="big num">${F2.format(s.v)} €/100 km</div></div><div class="sub num" style="text-align:right">di cui elettricità<br>${F2.format(s.el)} €/100 km</div>`
+    : `<div><div class="sub">Media mensile</div><div class="big num">${F2.format(avg)} €/100 km</div></div><div class="sub">Tocca un mese</div>`;
+  return `<div class="chart" id="trend"><div class="head">${head}</div><svg class="plot" viewBox="0 0 ${W} ${H}" role="img" aria-label="Costo energia per 100 km, mese per mese">${g}</svg></div>
+    <p class="note">Elettricità + benzina acquistate nel mese, diviso i km del mese. Un pieno fatto a fine mese alza quel mese e abbassa il successivo.</p>`;
+}
 function roundTop(x, y, w, h, fill) {
   const r = Math.min(4, h, w / 2);
   return `<path d="M${x},${y + h}V${y + r}Q${x},${y} ${x + r},${y}H${x + w - r}Q${x + w},${y} ${x + w},${y + r}V${y + h}Z" fill="${fill}"/>`;
@@ -439,11 +653,11 @@ function renderCharge() {
     for (const [k, items] of groups) {
       const s = monthStats(k);
       h += `<h2>${mLabel(k)}<span class="num">${F1.format(s.kwhB)} kWh · ${eur(s.el)}</span></h2><div class="group">` + items.map(c => `
-        <button class="row" onclick="editCharge('${c.id}')"><div class="main">
+        ${sw('charges', c.id, `<button class="row" onclick="editCharge('${c.id}')"><div class="main">
           <div class="t">${dShort(c.date)}${c.place !== 'casa' ? '<span class="pill">Colonnina</span>' : ''}</div>
           <div class="soc"><i style="left:${c.start}%;width:${Math.max(0, c.end - c.start)}%"></i></div>
-          <div class="s num">${c.start}% → ${c.end}%</div></div>
-          <div class="v"><div class="num">${F1.format(kwhBatt(c))} kWh</div><div class="s num">${eur(chargeCost(c))}</div></div></button>`).join('') + `</div>`;
+          <div class="s num">${c.start}% → ${c.end}%${c.km ? ' · ' + F0.format(c.km) + ' km' : ''}</div></div>
+          <div class="v"><div class="num">${F1.format(kwhBatt(c))} kWh</div><div class="s num">${eur(chargeCost(c))}</div></div></button>`)}`).join('') + `</div>`;
     }
   } else {
     const ks = [...new Set(list.map(c => mk(c.date)))];
@@ -469,13 +683,24 @@ function renderFuel() {
   setSeg('seg-fuel', state.fuelView);
   const list = [...db.fuel].sort(byDate).reverse();
   let h = '';
+  // Consumo reale pieno-pieno
+  const ff = fullToFull();
+  if (ff.length) {
+    const last = ff[ff.length - 1], tl = ff.reduce((t, x) => t + x.l, 0), tk = ff.reduce((t, x) => t + x.km, 0);
+    h += `<h2>Consumo reale (pieno-pieno)</h2><div class="tiles">
+      ${tile('Ultimo intervallo', F1.format(last.l / last.km * 100), 'L/100 km', '--fuel')}
+      ${tile('Media pieni', F1.format(tl / tk * 100), 'L/100 km')}</div>
+      <p class="note">Ultimo intervallo: ${F0.format(last.km)} km dal ${dShort(last.from)} al ${dShort(last.to)}${last.est ? ' (km stimati dalle letture)' : ''}. Sono litri sui km totali, quindi includono i km fatti in elettrico.</p>`;
+  } else if (list.length) {
+    h += `<p class="note" style="margin-top:12px">Quando fai il pieno completo attiva "Pieno" nel rifornimento: dal secondo pieno l'app calcola il consumo reale.</p>`;
+  }
   if (!list.length) h = `<h2>&nbsp;</h2><div class="group"><div class="empty">Nessun rifornimento. Tocca + per aggiungerne uno.</div></div>`;
   else if (state.fuelView === 'list') {
     for (const [k, items] of groupBy(list, f => mk(f.date))) {
       const s = monthStats(k);
-      h += `<h2>${mLabel(k)}<span class="num">${F1.format(s.fuelL)} L · ${eur(s.fuelEur)}</span></h2><div class="group">` + items.map(f => `
-        <button class="row" onclick="editFuel('${f.id}')"><div class="main"><div class="t">${dShort(f.date)}</div><div class="s num">${F3.format(f.ppl)} €/L</div></div>
-        <div class="v"><div class="num">${eur(f.total)}</div><div class="s num">${F2.format(liters(f))} L</div></div></button>`).join('') + `</div>`;
+      h += `<h2>${mLabel(k)}<span class="num">${F1.format(s.fuelL)} L · ${eur(s.fuelEur)}</span></h2><div class="group">` + items.map(f => sw('fuel', f.id, `
+        <button class="row" onclick="editFuel('${f.id}')"><div class="main"><div class="t">${dShort(f.date)}${f.full ? '<span class="pill">Pieno</span>' : ''}</div><div class="s num">${F3.format(f.ppl)} €/L${f.km ? ' · ' + F0.format(f.km) + ' km' : ''}</div></div>
+        <div class="v"><div class="num">${eur(f.total)}</div><div class="s num">${F2.format(liters(f))} L</div></div></button>`)).join('') + `</div>`;
     }
   } else {
     const rows = allMonths().slice().reverse().map(k => {
@@ -484,7 +709,7 @@ function renderFuel() {
       return `<tr><td>${mShort(k)} ${k.slice(0,4)}</td><td>${s.nf}</td><td>${F1.format(s.fuelL)}</td><td>${F3.format(s.fuelEur / s.fuelL)}</td><td>${F2.format(s.fuelEur)}</td></tr>`;
     }).join('');
     const tot = list.reduce((t, f) => t + f.total, 0), tl = list.reduce((t, f) => t + liters(f), 0);
-    h = `<h2>Per mese</h2><div class="group scrollx"><table class="rep num"><tr><th>Mese</th><th>N.</th><th>Litri</th><th>€/L medio</th><th>Totale</th></tr>${rows}
+    h += `<h2>Per mese</h2><div class="group scrollx"><table class="rep num"><tr><th>Mese</th><th>N.</th><th>Litri</th><th>€/L medio</th><th>Totale</th></tr>${rows}
       <tr><td><b>Totale</b></td><td>${list.length}</td><td>${F1.format(tl)}</td><td>${F3.format(tot / tl)}</td><td><b>${F2.format(tot)}</b></td></tr></table></div>`;
   }
   document.getElementById('fuel').innerHTML = h;
@@ -492,7 +717,8 @@ function renderFuel() {
 
 /* ---------- Km ---------- */
 function renderKm() {
-  const o = odoSorted().reverse();
+  const o = [...odoSorted()].reverse();
+  const SRC = { charge: ['da ricarica', 'editCharge'], fuel: ['da rifornimento', 'editFuel'], maint: ['da manutenzione', 'editMaint'], odo: ['', 'editOdo'] };
   let h = '';
   const months = allMonths().map(k => ({ k, r: kmBetween(k + '-01', addMonths(k, 1) + '-01') })).filter(x => x.r);
   if (months.length) {
@@ -504,7 +730,10 @@ function renderKm() {
   }
   h += `<h2>Letture contachilometri</h2><div class="group">` + (o.length ? o.map((r, i) => {
     const prev = o[i + 1];
-    return `<button class="row" onclick="editOdo('${r.id}')"><div class="main"><div class="t">${dLabel(r.date)}</div>${prev ? `<div class="s num">+${F0.format(r.km - prev.km)} km in ${Math.round(days(r.date) - days(prev.date))} gg</div>` : ''}</div><div class="v num">${F0.format(r.km)} km</div><span class="chev">›</span></button>`;
+    const [lbl, fn] = SRC[r.src];
+    const info = [prev ? `+${F0.format(r.km - prev.km)} km in ${Math.round(days(r.date) - days(prev.date))} gg` : '', lbl].filter(Boolean).join(' · ');
+    const row = `<button class="row" onclick="${fn}('${r.id}')"><div class="main"><div class="t">${dLabel(r.date)}</div>${info ? `<div class="s num">${info}</div>` : ''}</div><div class="v num">${F0.format(r.km)} km</div><span class="chev">›</span></button>`;
+    return r.src === 'odo' ? sw('odo', r.id, row) : `<div class="sw">${row}</div>`;
   }).join('') : `<div class="empty">Aggiungi la lettura dei km (ad esempio il primo di ogni mese).</div>`) + `</div>`;
   document.getElementById('km').innerHTML = h;
   bindChart('kmchart', i => { state.kmSel = state.kmSel === i ? null : i; render(); });
@@ -535,12 +764,12 @@ function renderCost() {
   if (state.costTab === 'maint') {
     const l = [...db.maint].sort(byDate).reverse(), tot = l.reduce((t, m) => t + (m.cost || 0), 0);
     h = `<h2>Interventi<span class="num">${eur(tot)}</span></h2><div class="group">` + (l.length ? l.map(m => `
-      <button class="row" onclick="editMaint('${m.id}')"><div class="main"><div class="t">${esc(m.desc)}</div><div class="s">${dLabel(m.date)}${m.km ? ' · ' + F0.format(m.km) + ' km' : ''}</div></div><div class="v num">${eur(m.cost)}</div><span class="chev">›</span></button>`).join('')
+      ${sw('maint', m.id, `<button class="row" onclick="editMaint('${m.id}')"><div class="main"><div class="t">${esc(m.desc)}${isService(m) ? '<span class="pill">Tagliando</span>' : ''}</div><div class="s">${dLabel(m.date)}${m.km ? ' · ' + F0.format(m.km) + ' km' : ''}</div></div><div class="v num">${eur(m.cost)}</div><span class="chev">›</span></button>`)}`).join('')
       : `<div class="empty">Nessuna manutenzione registrata.</div>`) + `</div>`;
   } else {
     const l = [...db.fees].sort(byDate).reverse();
     h = `<h2>Pagamenti</h2><div class="group">` + (l.length ? l.map(f => `
-      <button class="row" onclick="editFee('${f.id}')"><div class="main"><div class="t">${esc(f.type)}${f.desc ? ' · ' + esc(f.desc) : ''}</div><div class="s">Pagato ${dLabel(f.date)}${f.expiry ? ' · scade ' + dLabel(f.expiry) : ''}</div></div><div class="v num">${eur(f.cost)}</div><span class="chev">›</span></button>`).join('')
+      ${sw('fees', f.id, `<button class="row" onclick="editFee('${f.id}')"><div class="main"><div class="t">${esc(f.type)}${f.desc ? ' · ' + esc(f.desc) : ''}</div><div class="s">Pagato ${dLabel(f.date)}${f.expiry ? ' · scade ' + dLabel(f.expiry) : ''}</div></div><div class="v num">${eur(f.cost)}</div><span class="chev">›</span></button>`)}`).join('')
       : `<div class="empty">Nessun pagamento registrato.</div>`) + `</div>`;
     const years = groupBy(l, f => f.date.slice(0, 4));
     if (l.length) h += `<h2>Per anno</h2><div class="group">` + [...years].map(([y, it]) => kv(y, eur(it.reduce((t, f) => t + (f.cost || 0), 0)))).join('') + `</div>`;
@@ -567,6 +796,17 @@ const fmtIn = (v, d) => v == null ? '' : String(+v.toFixed(d)).replace('.', ',')
 function upsert(arr, obj) { const i = arr.findIndex(x => x.id === obj.id); if (i >= 0) arr[i] = obj; else arr.push(obj); }
 function remove(arr, id) { const i = arr.findIndex(x => x.id === id); if (i >= 0) arr.splice(i, 1); save(); }
 function need(cond, msg) { if (!cond) toast(msg); return !!cond; }
+// Controllo di coerenza del contachilometri rispetto alle altre letture
+function kmOk(date, km, selfId) {
+  if (km == null) return true;
+  const o = odoSorted().filter(r => r.id !== selfId);
+  const before = o.filter(r => r.date < date).pop(), after = o.find(r => r.date > date);
+  if (before && km < before.km) return confirm(`${F0.format(km)} km è meno della lettura del ${dLabel(before.date)} (${F0.format(before.km)} km). Salvare comunque?`);
+  if (after && km > after.km) return confirm(`${F0.format(km)} km è più della lettura del ${dLabel(after.date)} (${F0.format(after.km)} km). Salvare comunque?`);
+  return true;
+}
+const switchFld = (label, id, on) => `<div class="field"><label for="${id}" style="flex:1;width:auto">${label}</label><input type="checkbox" class="switch" id="${id}" ${on ? 'checked' : ''}></div>`;
+const kmPh = () => { const o = odoSorted(); return o.length ? 'ultima ' + F0.format(o[o.length - 1].km) : 'facoltativo'; };
 
 function editCharge(id) {
   const c = db.charges.find(x => x.id === id) || { id: uid(), date: today(), start: null, end: 100, kwh: null, place: 'casa', cost: null };
@@ -575,13 +815,15 @@ function editCharge(id) {
       <div class="field"><label>Dove</label><div class="segc" id="c-place"><button data-v="casa">Casa</button><button data-v="colonnina">Colonnina</button></div></div>
       ${fld('Inizio', 'c-start', c.start, { u: '%', ph: '25' })}${fld('Fine', 'c-end', c.end, { u: '%', ph: '100' })}
       ${fld('kWh caricati', 'c-kwh', fmtIn(c.kwh, 3), { u: 'kWh', ph: 'auto' })}
-      <div id="c-pubbox">${fld('Costo totale', 'c-cost', fmtIn(c.cost, 2), { u: '€', ph: '0,00' })}</div></div>
+      <div id="c-pubbox">${fld('Costo totale', 'c-cost', fmtIn(c.cost, 2), { u: '€', ph: '0,00' })}</div>
+      ${fld('Contachilometri', 'c-km', c.km, { u: 'km', ph: kmPh() })}</div>
     <div class="preview num" id="c-prev"></div>
-    <p class="note">Lascia "kWh caricati" vuoto per calcolarli da capacità batteria (${F1.format(db.settings.capacity)} kWh) × differenza di percentuale. Se il dato lo leggi dall'auto o dalla colonnina, inseriscilo.</p>`,
+    <p class="note">Lascia "kWh caricati" vuoto per calcolarli da capacità batteria (${F1.format(db.settings.capacity)} kWh) × differenza di percentuale. Se il dato lo leggi dall'auto o dalla colonnina, inseriscilo. I km sono facoltativi: se li scrivi valgono come lettura del contachilometri.</p>`,
     () => {
-      const o = { id: c.id, date: val('c-date'), start: num(val('c-start')), end: num(val('c-end')), kwh: num(val('c-kwh')), place: c.place, cost: c.place === 'casa' ? null : num(val('c-cost')) };
+      const o = { id: c.id, date: val('c-date'), start: num(val('c-start')), end: num(val('c-end')), kwh: num(val('c-kwh')), place: c.place, cost: c.place === 'casa' ? null : num(val('c-cost')), km: num(val('c-km')) };
       if (!need(o.date && o.start != null && o.end != null && o.end > o.start && o.end <= 100 && o.start >= 0, 'Controlla data e percentuali')) return false;
       if (o.place !== 'casa' && !need(o.cost != null, 'Inserisci il costo della colonnina')) return false;
+      if (!kmOk(o.date, o.km, c.id)) return false;
       upsert(db.charges, o); save(); toast('Ricarica salvata');
     }, id && (() => remove(db.charges, id)));
   const upd = () => {
@@ -602,15 +844,19 @@ function editCharge(id) {
 }
 
 function editFuel(id) {
-  const f = db.fuel.find(x => x.id === id) || { id: uid(), date: today(), total: null, ppl: null };
+  const f = db.fuel.find(x => x.id === id) || { id: uid(), date: today(), total: null, ppl: null, km: null, full: false };
   const lastPpl = !id && [...db.fuel].sort(byDate).pop();
   openSheet(id ? 'Rifornimento' : 'Nuovo rifornimento', `
     <div class="group">${fld('Data', 'f-date', f.date, { type: 'date' })}${fld('Totale', 'f-tot', fmtIn(f.total, 2), { u: '€', ph: '0,00' })}
-    ${fld('Prezzo al litro', 'f-ppl', fmtIn(f.ppl, 3), { u: '€/L', ph: lastPpl ? fmtIn(lastPpl.ppl, 3) : '1,799' })}</div>
-    <div class="preview num" id="f-prev"></div>`,
+    ${fld('Prezzo al litro', 'f-ppl', fmtIn(f.ppl, 3), { u: '€/L', ph: lastPpl ? fmtIn(lastPpl.ppl, 3) : '1,799' })}
+    ${fld('Contachilometri', 'f-km', f.km, { u: 'km', ph: kmPh() })}
+    ${switchFld('Pieno completo', 'f-full', f.full)}</div>
+    <div class="preview num" id="f-prev"></div>
+    <p class="note">Attiva "Pieno completo" quando riempi il serbatoio fino allo scatto: tra due pieni l'app calcola il consumo reale. Con i km del contachilometri il calcolo è esatto.</p>`,
     () => {
-      const o = { id: f.id, date: val('f-date'), total: num(val('f-tot')), ppl: num(val('f-ppl')) };
+      const o = { id: f.id, date: val('f-date'), total: num(val('f-tot')), ppl: num(val('f-ppl')), km: num(val('f-km')), full: document.getElementById('f-full').checked };
       if (!need(o.date && o.total > 0 && o.ppl > 0, 'Inserisci totale e prezzo al litro')) return false;
+      if (!kmOk(o.date, o.km, f.id)) return false;
       upsert(db.fuel, o); save(); toast('Rifornimento salvato');
     }, id && (() => remove(db.fuel, id)));
   const upd = () => { const t = num(val('f-tot')), p = num(val('f-ppl')); document.getElementById('f-prev').innerHTML = t > 0 && p > 0 ? `<b>${F2.format(t / p)} litri</b>` : ''; };
@@ -624,6 +870,7 @@ function editOdo(id) {
     () => {
       const o = { id: r.id, date: val('o-date'), km: num(val('o-km')) };
       if (!need(o.date && o.km >= 0, 'Inserisci data e km')) return false;
+      if (!kmOk(o.date, o.km, r.id)) return false;
       upsert(db.odo, o); save(); toast('Lettura salvata');
     }, id && (() => remove(db.odo, id)));
 }
@@ -632,10 +879,12 @@ function editMaint(id) {
   const m = db.maint.find(x => x.id === id) || { id: uid(), date: today(), desc: '', cost: null, km: null };
   openSheet(id ? 'Manutenzione' : 'Nuova manutenzione', `<div class="group">${fld('Data', 'm-date', m.date, { type: 'date' })}
     ${fld('Descrizione', 'm-desc', m.desc, { type: 'text', ph: 'Tagliando' })}${fld('Costo', 'm-cost', fmtIn(m.cost, 2), { u: '€', ph: '0,00' })}
-    ${fld('Km', 'm-km', m.km, { u: 'km', ph: 'facoltativo' })}</div>`,
+    ${fld('Km', 'm-km', m.km, { u: 'km', ph: kmPh() })}${switchFld('È un tagliando', 'm-serv', id ? isService(m) : false)}</div>
+    <p class="note">Il prossimo tagliando viene calcolato dall'ultimo intervento segnato come tagliando (ogni ${F0.format(db.settings.serviceKm)} km o ${db.settings.serviceMonths} mesi, modificabile nelle Impostazioni).</p>`,
     () => {
-      const o = { id: m.id, date: val('m-date'), desc: val('m-desc').trim(), cost: num(val('m-cost')) || 0, km: num(val('m-km')) };
+      const o = { id: m.id, date: val('m-date'), desc: val('m-desc').trim(), cost: num(val('m-cost')) || 0, km: num(val('m-km')), service: document.getElementById('m-serv').checked };
       if (!need(o.date && o.desc, 'Inserisci data e descrizione')) return false;
+      if (!kmOk(o.date, o.km, m.id)) return false;
       upsert(db.maint, o); save(); toast('Manutenzione salvata');
     }, id && (() => remove(db.maint, id)));
 }
@@ -647,11 +896,11 @@ function editFee(id) {
     <div class="field"><label for="e-type">Tipo</label><select id="e-type">${types.map(t => `<option ${t === f.type ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
     ${fld('Pagato il', 'e-date', f.date, { type: 'date' })}${fld('Costo', 'e-cost', fmtIn(f.cost, 2), { u: '€', ph: '0,00' })}
     ${fld('Scadenza', 'e-exp', f.expiry, { type: 'date' })}${fld('Note', 'e-desc', f.desc, { type: 'text', ph: 'Compagnia, polizza…' })}</div>
-    <p class="note">Se lasci vuota la scadenza viene impostata a un anno dal pagamento. Le scadenze compaiono nel Riepilogo.</p>`,
+    <p class="note">Se lasci vuota la scadenza viene impostata a un anno dal pagamento (due anni per la revisione). Le scadenze compaiono nel Riepilogo.</p>`,
     () => {
       const o = { id: f.id, type: val('e-type'), date: val('e-date'), cost: num(val('e-cost')) || 0, expiry: val('e-exp'), desc: val('e-desc').trim() };
       if (!need(o.date, 'Inserisci la data')) return false;
-      if (!o.expiry) { const d = new Date(o.date); d.setFullYear(d.getFullYear() + 1); o.expiry = d.toISOString().slice(0, 10); }
+      if (!o.expiry) o.expiry = addYears(o.date, o.type === 'Revisione' ? 2 : 1);
       upsert(db.fees, o); save(); toast('Pagamento salvato');
     }, id && (() => remove(db.fees, id)));
 }
@@ -675,18 +924,32 @@ const F5 = v => String(v).replace('.', ',');
 function openSettings() {
   const s = db.settings;
   openSheet('Impostazioni', `
-    <div class="group">${fld('Nome auto', 's-name', s.carName, { type: 'text' })}${fld('Capacità batteria', 's-cap', fmtIn(s.capacity, 2), { u: 'kWh' })}${fld('Dispersione ricarica casa', 's-loss', fmtIn(s.loss, 1), { u: '%' })}</div>
+    <div class="group">${fld('Nome auto', 's-name', s.carName, { type: 'text' })}${fld('Versione', 's-sub', s.carSub, { type: 'text', ph: 'SHS-P · 2026 · Moonlight Silver' })}
+      <div class="field"><label for="s-color">Colore disegno</label><input id="s-color" type="color" value="${esc(s.carColor)}" style="flex:none;width:44px;height:30px;padding:0;border-radius:8px"></div>
+      ${fld('Immatricolazione', 's-reg', s.regDate, { type: 'date' })}</div>
+    <h2>Foto dell'auto</h2><div class="group">
+      <button class="row btn" id="s-photo">${getPhoto() ? 'Cambia foto' : 'Scegli una foto'}</button>
+      ${getPhoto() ? '<button class="row danger" id="s-nophoto">Rimuovi foto (torna al disegno)</button>' : ''}</div>
+    <p class="note">Scegli una foto dalla Galleria o da File: viene mostrata intera (ritagliala prima su Foto) e resta solo su questo iPhone, non viene pubblicata. Per avere solo l'auto senza sfondo: in Foto tieni premuto sull'auto, scegli Condividi → Salva su File, e usa quel file.</p>
+    <h2>Ricarica</h2><div class="group">${fld('Capacità batteria', 's-cap', fmtIn(s.capacity, 2), { u: 'kWh' })}${fld('Dispersione ricarica casa', 's-loss', fmtIn(s.loss, 1), { u: '%' })}</div>
     <p class="note">La dispersione si applica solo alle ricariche di casa: rappresenta l'energia persa tra contatore e batteria (caricatore di bordo, cavo, prolunga).</p>
+    <h2>Calcoli</h2><div class="group">${fld('Consumo solo benzina', 's-ref', fmtIn(s.petrolRef, 1), { u: 'L/100 km' })}
+      ${fld('Tagliando ogni', 's-skm', s.serviceKm, { u: 'km' })}${fld('oppure ogni', 's-smo', s.serviceMonths, { u: 'mesi' })}</div>
+    <p class="note">"Consumo solo benzina" serve a stimare il risparmio: è quanto consumerebbe l'auto in ibrido senza mai ricaricarla (circa 5,5–6,5 L/100 km per questo modello). Controlla sul libretto di manutenzione l'intervallo dei tagliandi.</p>
     <h2>Backup</h2><div class="group">
       <button class="row btn" id="s-exp">Esporta backup</button>
       <button class="row btn" id="s-imp">Importa backup</button></div>
     <p class="note">I dati restano solo su questo iPhone. Esporta un backup ogni tanto e salvalo su iCloud Drive (File). L'importazione sostituisce tutti i dati attuali.</p>
     <div class="group" style="margin-top:28px"><button class="row danger" id="s-wipe">Cancella tutti i dati</button></div>`,
     () => {
-      const cap = num(val('s-cap')), loss = num(val('s-loss'));
-      if (!need(cap > 0 && loss >= 0 && loss < 100, 'Valori non validi')) return false;
-      db.settings = { carName: val('s-name').trim() || 'Jaecoo 7', capacity: cap, loss }; save(); toast('Impostazioni salvate');
+      const cap = num(val('s-cap')), loss = num(val('s-loss')), ref = num(val('s-ref')), skm = num(val('s-skm')), smo = num(val('s-smo'));
+      if (!need(cap > 0 && loss >= 0 && loss < 100 && ref > 0 && skm > 0 && smo > 0, 'Valori non validi')) return false;
+      db.settings = { carName: val('s-name').trim() || 'Jaecoo 7', carSub: val('s-sub').trim(), carColor: val('s-color'), regDate: val('s-reg'),
+        capacity: cap, loss, petrolRef: ref, serviceKm: skm, serviceMonths: smo }; save(); toast('Impostazioni salvate');
     });
+  document.getElementById('s-photo').onclick = () => document.getElementById('photoIn').click();
+  const np = document.getElementById('s-nophoto');
+  if (np) np.onclick = () => { localStorage.removeItem(PHOTO_KEY); render(); openSettings(); toast('Foto rimossa'); };
   document.getElementById('s-exp').onclick = exportData;
   document.getElementById('s-imp').onclick = () => document.getElementById('fileIn').click();
   document.getElementById('s-wipe').onclick = () => {
@@ -695,7 +958,7 @@ function openSettings() {
 }
 async function exportData() {
   const name = 'jaecoo7-backup-' + today() + '.json';
-  const file = new File([JSON.stringify(db, null, 1)], name, { type: 'application/json' });
+  const file = new File([JSON.stringify(Object.assign({}, db, { photo: getPhoto() || undefined }), null, 1)], name, { type: 'application/json' });
   if (navigator.canShare && navigator.canShare({ files: [file] })) {
     try { await navigator.share({ files: [file], title: name }); return; } catch (e) { if (e.name === 'AbortError') return; }
   }
@@ -709,10 +972,77 @@ document.getElementById('fileIn').addEventListener('change', async e => {
     if (!d || !d.version || !Array.isArray(d.charges)) throw new Error();
     const n = d.charges.length + d.fuel.length + d.odo.length + d.maint.length + d.fees.length;
     if (!confirm(`Importare ${n} voci? I dati attuali verranno sostituiti.`)) return;
+    if (d.photo) { try { localStorage.setItem(PHOTO_KEY, d.photo); } catch (e) {} }
+    delete d.photo;
     db = Object.assign(structuredClone(DEFAULT), d, { settings: Object.assign({}, DEFAULT.settings, d.settings) });
     save(); closeSheet(); toast('Backup importato');
   } catch (err) { toast('File non valido'); }
 });
+
+/* ================= Foto dell'auto ================= */
+const PHOTO_KEY = 'jaecoo7-photo';
+function getPhoto() { try { return localStorage.getItem(PHOTO_KEY); } catch (e) { return null; } }
+document.getElementById('photoIn').addEventListener('change', async e => {
+  const f = e.target.files[0]; e.target.value = '';
+  if (!f) return;
+  try {
+    const url = URL.createObjectURL(f), img = new Image();
+    await new Promise((ok, ko) => { img.onload = ok; img.onerror = ko; img.src = url; });
+    // nessun ritaglio: solo ridimensionata a max 1280 px di larghezza.
+    // I PNG (es. soggetto isolato con iOS, sfondo trasparente) restano PNG per mantenere la trasparenza.
+    const W = Math.min(1280, img.naturalWidth), H = Math.round(W * img.naturalHeight / img.naturalWidth);
+    const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+    cv.getContext('2d').drawImage(img, 0, 0, W, H);
+    URL.revokeObjectURL(url);
+    const png = /png|heic|heif/i.test(f.type);
+    localStorage.setItem(PHOTO_KEY, png ? cv.toDataURL('image/png') : cv.toDataURL('image/jpeg', .88));
+    heroCard.done = false; closeSheet(); state.page === 'home' && render(); toast('Foto aggiornata');
+  } catch (err) { toast('Impossibile usare questa immagine'); }
+});
+
+/* ================= Scorri per eliminare (con Annulla) ================= */
+const LISTS = { charges: 'Ricarica', fuel: 'Rifornimento', odo: 'Lettura', maint: 'Manutenzione', fees: 'Pagamento' };
+const sw = (k, id, row) => `<div class="sw" data-k="${k}" data-id="${id}"><button class="del" tabindex="-1">Elimina</button>${row}</div>`;
+let undo = null;
+function swipeDelete(k, id) {
+  const i = db[k].findIndex(x => x.id === id); if (i < 0) return;
+  undo = { k, item: db[k][i] }; db[k].splice(i, 1); save();
+  toast(LISTS[k] + ': eliminato', 'Annulla', () => { if (undo) { db[undo.k].push(undo.item); undo = null; save(); } });
+}
+(() => {
+  let cur = null, x0 = 0, y0 = 0, dx = 0, mode = null, open = null, swallow = false;
+  const closeOpen = () => { if (open) { const s = open; s.querySelector('.row').style.transform = ''; setTimeout(() => s.classList.remove('open'), 250); open = null; } };
+  document.addEventListener('pointerdown', e => {
+    const s = e.target.closest('.sw[data-k]');
+    if (e.target.closest('.del')) return;
+    if (open && open !== s) { closeOpen(); swallow = true; setTimeout(() => swallow = false, 400); return; }
+    if (!s) return;
+    cur = s; x0 = e.clientX; y0 = e.clientY; dx = 0; mode = null;
+  });
+  document.addEventListener('pointermove', e => {
+    if (!cur) return;
+    const ddx = e.clientX - x0, ddy = e.clientY - y0;
+    if (!mode) { if (Math.abs(ddx) > 8 && Math.abs(ddx) > Math.abs(ddy)) mode = 'h'; else if (Math.abs(ddy) > 8) { mode = 'v'; cur = null; return; } else return; }
+    const base = open === cur ? -88 : 0;
+    dx = Math.min(0, Math.max(-120, base + ddx));
+    cur.classList.add('drag'); cur.querySelector('.row').style.transform = `translateX(${dx}px)`;
+  });
+  document.addEventListener('pointerup', () => {
+    if (!cur) return;
+    cur.classList.remove('drag');
+    if (mode === 'h') {
+      swallow = true; setTimeout(() => swallow = false, 400);
+      if (dx < -44) { cur.querySelector('.row').style.transform = 'translateX(-88px)'; cur.classList.add('open'); open = cur; }
+      else { const s = cur; s.querySelector('.row').style.transform = ''; setTimeout(() => s.classList.remove('open'), 250); if (open === cur) open = null; }
+    }
+    cur = null;
+  });
+  document.addEventListener('click', e => {
+    if (swallow) { swallow = false; e.stopPropagation(); e.preventDefault(); return; }
+    const d = e.target.closest('.sw .del');
+    if (d) { const s = d.parentElement; open = null; swipeDelete(s.dataset.k, s.dataset.id); }
+  }, true);
+})();
 
 /* ================= Navigazione ================= */
 document.querySelectorAll('.tabbar button').forEach(b => b.onclick = () => {
@@ -726,7 +1056,12 @@ bindSeg('seg-fuel', v => { state.fuelView = v; render(); });
 bindSeg('seg-cost', v => { state.costTab = v; render(); });
 
 let tt;
-function toast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(tt); tt = setTimeout(() => t.classList.remove('on'), 1800); }
+function toast(msg, actionLabel, action) {
+  const t = document.getElementById('toast');
+  t.innerHTML = esc(msg) + (actionLabel ? ` <button style="color:var(--blue);font-weight:600;margin-left:10px">${esc(actionLabel)}</button>` : '');
+  if (actionLabel) t.querySelector('button').onclick = () => { action(); t.classList.remove('on'); };
+  t.classList.add('on'); clearTimeout(tt); tt = setTimeout(() => t.classList.remove('on'), actionLabel ? 4500 : 1800);
+}
 
 if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js').catch(() => {});
 if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
