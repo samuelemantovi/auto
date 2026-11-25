@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Jaecoo 7">
+<meta name="theme-color" content="#F2F2F7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="manifest" href="manifest.webmanifest">
+<title>Jaecoo 7</title>
+<style>
+:root{
+  --bg:#F2F2F7; --card:#FFFFFF; --card2:#F2F2F7; --sep:rgba(60,60,67,.18);
+  --ink:#000; --ink2:rgba(60,60,67,.62); --ink3:rgba(60,60,67,.32);
+  --blue:#007AFF; --el:#007AFF; --fuel:#FF9500; --green:#34C759; --red:#FF3B30; --orange:#FF9500;
+  --bar:rgba(249,249,249,.86); --fill:rgba(118,118,128,.12); --seg:#FFFFFF;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#000; --card:#1C1C1E; --card2:#2C2C2E; --sep:rgba(84,84,88,.6);
+    --ink:#fff; --ink2:rgba(235,235,245,.6); --ink3:rgba(235,235,245,.3);
+    --blue:#0A84FF; --el:#0A84FF; --fuel:#D47800; --green:#30D158; --red:#FF453A; --orange:#FF9F0A;
+    --bar:rgba(22,22,24,.86); --fill:rgba(118,118,128,.24); --seg:#636366;
+  }
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--ink);
+  font:17px/1.3 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif;
+  -webkit-font-smoothing:antialiased;overscroll-behavior-y:none}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
+.num{font-variant-numeric:tabular-nums}
+
+/* Pagine */
+main{padding:calc(env(safe-area-inset-top) + 8px) 16px calc(env(safe-area-inset-bottom) + 96px);max-width:640px;margin:0 auto}
+.page{display:none}.page.on{display:block;animation:fade .2s ease}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+.nav{display:flex;justify-content:flex-end;gap:18px;height:44px;align-items:center}
+.nav button{color:var(--blue);display:flex;align-items:center}
+.nav svg{width:26px;height:26px}
+h1{font-size:34px;font-weight:700;letter-spacing:.2px;margin:0 0 14px}
+h2{font-size:13px;font-weight:400;text-transform:uppercase;color:var(--ink2);margin:26px 16px 7px;letter-spacing:.1px;display:flex;justify-content:space-between;gap:8px}
+h2 span{text-transform:none}
+
+/* Liste raggruppate stile iOS */
+.group{background:var(--card);border-radius:12px;overflow:hidden}
+.row{display:flex;align-items:center;gap:12px;padding:11px 16px;min-height:44px;position:relative;width:100%;text-align:left}
+.row+.row::before{content:"";position:absolute;top:0;left:16px;right:0;border-top:.5px solid var(--sep)}
+button.row:active{background:var(--fill)}
+.row .main{flex:1;min-width:0}
+.row .t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .s{font-size:13px;color:var(--ink2);margin-top:2px}
+.row .v{text-align:right;white-space:nowrap}
+.row .v .s{text-align:right}
+.chev{color:var(--ink3);font-size:20px;margin-left:-4px}
+.empty{color:var(--ink2);text-align:center;padding:28px 16px;font-size:15px}
+.note{font-size:13px;color:var(--ink2);margin:7px 16px 0;line-height:1.4}
+
+/* Card statistiche */
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tile{background:var(--card);border-radius:12px;padding:12px 14px}
+.tile .l{font-size:13px;color:var(--ink2);display:flex;align-items:center;gap:6px}
+.tile .n{font-size:26px;font-weight:600;margin-top:4px;letter-spacing:-.3px}
+.tile .n small{font-size:15px;font-weight:500;color:var(--ink2);margin-left:2px}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex:none}
+
+/* Segmented control */
+.segc{display:flex;background:var(--fill);border-radius:9px;padding:2px;margin:0 0 4px}
+.segc button{flex:1;font-size:13px;font-weight:500;padding:6px 4px;border-radius:7px}
+.segc button.on{background:var(--seg);box-shadow:0 3px 8px rgba(0,0,0,.12),0 3px 1px rgba(0,0,0,.04)}
+
+/* Barra di carica */
+.soc{height:6px;border-radius:3px;background:var(--fill);position:relative;margin-top:6px;width:100%}
+.soc i{position:absolute;top:0;bottom:0;border-radius:3px;background:var(--el)}
+.pill{font-size:11px;font-weight:600;padding:2px 7px;border-radius:6px;background:var(--fill);color:var(--ink2);margin-left:6px;vertical-align:1px}
+.pill.warn{background:color-mix(in srgb,var(--orange) 20%,transparent);color:var(--orange)}
+.pill.bad{background:color-mix(in srgb,var(--red) 18%,transparent);color:var(--red)}
+
+/* Grafico */
+.chart{background:var(--card);border-radius:12px;padding:14px 12px 8px}
+.chart .head{display:flex;justify-content:space-between;align-items:baseline;padding:0 4px 4px;min-height:40px}
+.chart .head .big{font-size:22px;font-weight:600}
+.chart .head .sub{font-size:13px;color:var(--ink2)}
+.legend{display:flex;gap:14px;font-size:13px;color:var(--ink2);padding:6px 4px 2px}
+.legend span{display:flex;align-items:center;gap:6px}
+svg.plot{display:block;width:100%;height:auto;overflow:visible}
+svg.plot text{fill:var(--ink2);font-size:11px}
+svg.plot .grid{stroke:var(--sep);stroke-width:1}
+svg.plot .hit{fill:transparent;cursor:pointer}
+svg.plot .sel{fill:var(--fill)}
+
+/* Tab bar */
+.tabbar{position:fixed;left:0;right:0;bottom:0;display:flex;justify-content:space-around;
+  padding:6px 4px calc(env(safe-area-inset-bottom) + 4px);background:var(--bar);
+  -webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);
+  border-top:.5px solid var(--sep);z-index:10}
+.tabbar button{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:10px;font-weight:500;color:var(--ink2);padding:2px 0}
+.tabbar button.on{color:var(--blue)}
+.tabbar svg{width:26px;height:26px}
+
+/* Foglio modale */
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.35);opacity:0;pointer-events:none;transition:opacity .25s;z-index:20}
+.scrim.on{opacity:1;pointer-events:auto}
+.sheet{position:fixed;left:0;right:0;bottom:0;max-height:92vh;overflow:auto;background:var(--bg);
+  border-radius:14px 14px 0 0;z-index:21;transform:translateY(100%);transition:transform .32s cubic-bezier(.2,.9,.25,1);
+  padding:0 16px calc(env(safe-area-inset-bottom) + 24px);max-width:640px;margin:0 auto}
+.sheet.on{transform:none}
+.sheet .bar{display:flex;justify-content:space-between;align-items:center;height:56px;position:sticky;top:0;background:var(--bg);z-index:1}
+.sheet .bar b{font-size:17px;font-weight:600}
+.sheet .bar button{color:var(--blue);min-width:70px;text-align:left}
+.sheet .bar button:last-child{text-align:right;font-weight:600}
+.sheet .bar button:disabled{color:var(--ink3)}
+.field{display:flex;align-items:center;gap:12px;padding:0 16px;min-height:46px;position:relative}
+.field+.field::before{content:"";position:absolute;top:0;left:16px;right:0;border-top:.5px solid var(--sep)}
+.field label{flex:none;width:42%}
+.field input,.field select,.field textarea{flex:1;min-width:0;border:0;background:none;font:inherit;color:var(--ink);text-align:right;padding:12px 0;outline:none;-webkit-appearance:none;appearance:none}
+.field input::placeholder{color:var(--ink3)}
+.field input[type=date]{min-height:24px}
+.field .u{color:var(--ink2);flex:none}
+.field .segc{flex:1;margin:0}
+.preview{margin:10px 16px 0;font-size:15px;color:var(--ink2)}
+.preview b{color:var(--ink);font-weight:600}
+.danger{color:var(--red);width:100%;text-align:center;justify-content:center}
+.btn{color:var(--blue);justify-content:center;text-align:center;width:100%}
+.toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top) + 12px);transform:translate(-50%,-150%);background:var(--card);
+  color:var(--ink);padding:10px 18px;border-radius:20px;box-shadow:0 6px 24px rgba(0,0,0,.18);z-index:40;transition:transform .3s;font-size:15px}
+.toast.on{transform:translate(-50%,0)}
+table.rep{width:100%;border-collapse:collapse;font-size:13px}
+table.rep th,table.rep td{padding:9px 6px;text-align:right;white-space:nowrap}
+table.rep th{color:var(--ink2);font-weight:500}
+table.rep th:first-child,table.rep td:first-child{text-align:left;padding-left:16px}
+table.rep th:last-child,table.rep td:last-child{padding-right:16px}
+table.rep tr+tr td{border-top:.5px solid var(--sep)}
+.scrollx{overflow-x:auto}
+</style>
+</head>
+<body>
+<main>
+  <!-- RIEPILOGO -->
+  <section class="page on" id="p-home">
+    <div class="nav"><button onclick="openSettings()" aria-label="Impostazioni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button></div>
+    <h1 id="carName">Jaecoo 7</h1>
+    <div id="home"></div>
+  </section>
+
+  <!-- RICARICHE -->
+  <section class="page" id="p-charge">
+    <div class="nav"><button onclick="editCharge()" aria-label="Nuova ricarica"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button></div>
+    <h1>Ricariche</h1>
+    <div class="segc" id="seg-charge"><button class="on" data-v="list">Elenco</button><button data-v="month">Mensile</button></div>
+    <div id="charge"></div>
+  </section>
+
+  <!-- BENZINA -->
+  <section class="page" id="p-fuel">
+    <div class="nav"><button onclick="editFuel()" aria-label="Nuovo rifornimento"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button></div>
+    <h1>Rifornimenti</h1>
+    <div class="segc" id="seg-fuel"><button class="on" data-v="list">Elenco</button><button data-v="month">Mensile</button></div>
+    <div id="fuel"></div>
+  </section>
+
+  <!-- KM -->
+  <section class="page" id="p-km">
+    <div class="nav"><button onclick="editOdo()" aria-label="Nuova lettura"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button></div>
+    <h1>Chilometri</h1>
+    <div id="km"></div>
+  </section>
+
+  <!-- SPESE -->
+  <section class="page" id="p-cost">
+    <div class="nav"><button onclick="state.costTab==='maint'?editMaint():editFee()" aria-label="Nuova spesa"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button></div>
+    <h1>Spese</h1>
+    <div class="segc" id="seg-cost"><button class="on" data-v="maint">Manutenzioni</button><button data-v="fee">Assicurazione e bollo</button></div>
+    <div id="cost"></div>
+  </section>
+</main>
+
+<nav class="tabbar">
+  <button class="on" data-p="home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 18a8 8 0 1 1 16 0"/><path d="M12 18l4-5"/><circle cx="12" cy="18" r="1.2" fill="currentColor"/></svg>Riepilogo</button>
+  <button data-p="charge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg>Ricariche</button>
+  <button data-p="fuel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v16M3 21h12M4 10h10"/><path d="M14 8h2a2 2 0 0 1 2 2v6a1.5 1.5 0 0 0 3 0V9l-3-3"/></svg>Benzina</button>
+  <button data-p="km"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M8 3 4 21M16 3l4 18M12 4v3M12 11v3M12 18v3"/></svg>Km</button>
+  <button data-p="cost"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.4-.6-.6-2.4z"/></svg>Spese</button>
+</nav>
+
+<div class="scrim" id="scrim" onclick="closeSheet()"></div>
+<div class="sheet" id="sheet"></div>
+<div class="toast" id="toast"></div>
+<input type="file" id="fileIn" accept="application/json,.json" hidden>
+
+<script>
+'use strict';
+/* ================= Dati ================= */
+const KEY = 'jaecoo7-data';
+const DEFAULT = {
+  version: 1,
+  settings: { carName: 'Jaecoo 7', capacity: 18.3, loss: 10 },
+  tariffs: [], charges: [], fuel: [], odo: [], maint: [], fees: []
+};
+let db = load();
+const state = { page: 'home', chargeView: 'list', fuelView: 'list', costTab: 'maint', range: '6', chartSel: null, kmSel: null };
+
+function load() {
+  try {
+    const d = JSON.parse(localStorage.getItem(KEY));
+    if (d && d.version) return Object.assign(structuredClone(DEFAULT), d, { settings: Object.assign({}, DEFAULT.settings, d.settings) });
+  } catch (e) {}
+  return structuredClone(DEFAULT);
+}
+function save() { localStorage.setItem(KEY, JSON.stringify(db)); render(); }
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+const byDate = (a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0;
+
+/* ================= Formattazione ================= */
+const nf = (d) => new Intl.NumberFormat('it-IT', { minimumFractionDigits: d, maximumFractionDigits: d });
+const F0 = nf(0), F1 = nf(1), F2 = nf(2), F3 = nf(3);
+const eur = v => F2.format(v || 0) + ' €';
+const MESI = ['gen','feb','mar','apr','mag','giu','lug','ago','set','ott','nov','dic'];
+const MESI_L = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
+const today = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); };
+const mk = date => date.slice(0, 7);
+const mLabel = k => MESI_L[+k.slice(5) - 1] + ' ' + k.slice(0, 4);
+const mShort = k => MESI[+k.slice(5) - 1];
+const dLabel = s => { const [y, m, d] = s.split('-'); return +d + ' ' + MESI[+m - 1] + ' ' + y; };
+const dShort = s => { const [, m, d] = s.split('-'); return +d + ' ' + MESI[+m - 1]; };
+const days = s => Date.UTC(+s.slice(0,4), +s.slice(5,7) - 1, +s.slice(8,10)) / 864e5;
+const fromDays = n => new Date(n * 864e5).toISOString().slice(0, 10);
+const addMonths = (k, n) => { let y = +k.slice(0,4), m = +k.slice(5) - 1 + n; y += Math.floor(m / 12); m = ((m % 12) + 12) % 12; return y + '-' + String(m + 1).padStart(2, '0'); };
+const num = v => { if (v === '' || v == null) return null; const n = parseFloat(String(v).replace(',', '.')); return isFinite(n) ? n : null; };
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+
+/* ================= Calcoli ================= */
+function tariffAt(date) {
+  let p = null;
+  for (const t of [...db.tariffs].sort((a, b) => a.from < b.from ? -1 : 1)) if (t.from <= date) p = t.price;
+  return p;
+}
+// kWh entrati in batteria: valore inserito oppure capacità × Δ%
+const kwhBatt = c => c.kwh != null ? c.kwh : db.settings.capacity * (c.end - c.start) / 100;
+// kWh prelevati dalla rete: a casa si aggiunge la dispersione, alla colonnina paghi già quelli erogati
+const kwhGrid = c => c.place === 'casa' ? kwhBatt(c) * (1 + db.settings.loss / 100) : kwhBatt(c);
+const chargeCost = c => c.place === 'casa' ? kwhGrid(c) * (tariffAt(c.date) ?? 0) : (c.cost || 0);
+const liters = f => f.ppl ? f.total / f.ppl : 0;
+
+const odoSorted = () => [...db.odo].sort(byDate);
+function kmAt(date) {
+  const o = odoSorted();
+  if (!o.length || date < o[0].date || date > o[o.length - 1].date) return null;
+  for (let i = 0; i < o.length; i++) {
+    if (o[i].date === date) return o[i].km;
+    if (o[i].date > date) {
+      const a = o[i - 1], b = o[i];
+      return a.km + (b.km - a.km) * (days(date) - days(a.date)) / (days(b.date) - days(a.date));
+    }
+  }
+  return null;
+}
+// Km percorsi in un intervallo [a, b) usando interpolazione lineare tra le letture
+function kmBetween(a, b) {
+  const o = odoSorted();
+  if (o.length < 2) return null;
+  const s = a > o[0].date ? a : o[0].date, e = b < o[o.length - 1].date ? b : o[o.length - 1].date;
+  if (s >= e) return null;
+  return { km: kmAt(e) - kmAt(s), partial: s > a || e < b, s, e };
+}
+function monthStats(k) {
+  const ch = db.charges.filter(c => mk(c.date) === k), fu = db.fuel.filter(f => mk(f.date) === k);
+  const home = ch.filter(c => c.place === 'casa'), pub = ch.filter(c => c.place !== 'casa');
+  const sum = (arr, fn) => arr.reduce((t, x) => t + fn(x), 0);
+  const kmr = kmBetween(k + '-01', addMonths(k, 1) + '-01');
+  return {
+    k, n: ch.length,
+    kwhB: sum(ch, kwhBatt), kwhHome: sum(home, kwhBatt), kwhHomeGrid: sum(home, kwhGrid), kwhPub: sum(pub, kwhBatt),
+    elHome: sum(home, chargeCost), elPub: sum(pub, chargeCost), el: sum(ch, chargeCost),
+    fuelEur: sum(fu, f => f.total), fuelL: sum(fu, liters), nf: fu.length,
+    km: kmr ? kmr.km : null, kmPartial: kmr ? kmr.partial : false,
+    maint: sum(db.maint.filter(m => mk(m.date) === k), m => m.cost || 0),
+  };
+}
+function allMonths() {
+  const ds = [...db.charges, ...db.fuel, ...db.odo, ...db.maint, ...db.fees].map(x => x.date).filter(Boolean).sort();
+  if (!ds.length) return [mk(today())];
+  const out = []; let k = mk(ds[0]); const end = mk(today()) > mk(ds[ds.length - 1]) ? mk(today()) : mk(ds[ds.length - 1]);
+  while (k <= end) { out.push(k); k = addMonths(k, 1); }
+  return out;
+}
+// Statistiche su una finestra: energia acquistata ≈ energia consumata (approssimazione, migliore su periodi lunghi)
+function periodStats(months) {
+  const o = odoSorted();
+  if (o.length < 2) return null;
+  const last = o[o.length - 1].date;
+  let start = months === 'all' ? o[0].date : fromDays(days(last) - Math.round(months * 30.44));
+  if (start < o[0].date) start = o[0].date;
+  const r = kmBetween(start, last);
+  if (!r || r.km <= 0) return null;
+  const inW = x => x.date > start && x.date <= last;
+  const ch = db.charges.filter(inW), fu = db.fuel.filter(inW);
+  const el = ch.reduce((t, c) => t + chargeCost(c), 0), kwh = ch.reduce((t, c) => t + kwhBatt(c), 0);
+  const fe = fu.reduce((t, f) => t + f.total, 0), fl = fu.reduce((t, f) => t + liters(f), 0);
+  const mt = db.maint.filter(inW).reduce((t, m) => t + (m.cost || 0), 0);
+  // assicurazione e bollo spalmati sui giorni di validità
+  let fees = 0;
+  for (const f of db.fees) {
+    const fs = days(f.date), fe2 = f.expiry ? days(f.expiry) : fs + 365;
+    const ov = Math.min(fe2, days(last)) - Math.max(fs, days(start));
+    if (ov > 0 && fe2 > fs) fees += (f.cost || 0) * ov / (fe2 - fs);
+  }
+  return { start, end: last, km: r.km, el, kwh, fe, fl, mt, fees, energy: el + fe };
+}
+
+/* ================= Render ================= */
+function render() {
+  document.getElementById('carName').textContent = db.settings.carName || 'Jaecoo 7';
+  ({ home: renderHome, charge: renderCharge, fuel: renderFuel, km: renderKm, cost: renderCost })[state.page]();
+}
+const tile = (label, value, unit, dot) =>
+  `<div class="tile"><div class="l">${dot ? `<i class="dot" style="background:var(${dot})"></i>` : ''}${label}</div><div class="n num">${value}${unit ? `<small>${unit}</small>` : ''}</div></div>`;
+
+function renderHome() {
+  const k = mk(today()), m = monthStats(k);
+  let h = `<h2>${mLabel(k)}</h2><div class="tiles">
+    ${tile('Km', m.km != null ? F0.format(m.km) : '–', m.kmPartial ? ' fin qui' : '')}
+    ${tile('Spesa energia', F2.format(m.el + m.fuelEur), '€')}
+    ${tile('Elettricità', F2.format(m.el), '€', '--el')}
+    ${tile('Benzina', F2.format(m.fuelEur), '€', '--fuel')}
+  </div>`;
+
+  // Scadenze
+  const due = latestFees();
+  if (due.length) {
+    h += `<h2>Scadenze</h2><div class="group">` + due.map(f => {
+      const d = Math.round(days(f.expiry) - days(today()));
+      const cls = d < 0 ? 'bad' : d <= 30 ? 'warn' : '';
+      const txt = d < 0 ? `scaduta da ${-d} gg` : d === 0 ? 'oggi' : `tra ${d} gg`;
+      return `<div class="row"><div class="main"><div class="t">${esc(f.type)}</div><div class="s">${dLabel(f.expiry)}</div></div><div class="v"><span class="pill ${cls}">${txt}</span></div></div>`;
+    }).join('') + `</div>`;
+  }
+
+  // Grafico spesa mensile
+  const months = allMonths().slice(-6);
+  h += `<h2>Spesa energia mensile</h2>` + spendChart(months);
+
+  // Statistiche
+  const R = state.range;
+  h += `<h2>Statistiche</h2><div class="segc" id="seg-range">
+    <button data-v="3" class="${R==='3'?'on':''}">3 mesi</button><button data-v="6" class="${R==='6'?'on':''}">6 mesi</button><button data-v="12" class="${R==='12'?'on':''}">12 mesi</button><button data-v="all" class="${R==='all'?'on':''}">Tutto</button></div>`;
+  const p = periodStats(R === 'all' ? 'all' : +R);
+  if (!p) h += `<div class="group"><div class="empty">Servono almeno due letture dei km.</div></div>`;
+  else {
+    const k100 = p.km / 100;
+    h += `<div class="tiles" style="margin-top:8px">
+      ${tile('Costo energia', F2.format(p.energy / k100), '€/100 km')}
+      ${tile('Km percorsi', F0.format(p.km), 'km')}
+      ${tile('Benzina', F1.format(p.fl / k100), 'L/100 km', '--fuel')}
+      ${tile('Elettricità', F1.format(p.kwh / k100), 'kWh/100 km', '--el')}
+      ${tile('Quota elettrica', p.energy ? F0.format(p.el / p.energy * 100) : '–', '% spesa')}
+      ${tile('Tutto incluso', F2.format((p.energy + p.mt + p.fees) / p.km), '€/km')}
+    </div>
+    <p class="note">Dal ${dLabel(p.start)} al ${dLabel(p.end)} (ultima lettura km). Consumi medi su tutti i km percorsi: benzina e kWh acquistati nel periodo divisi per i km. Più lungo è il periodo, più il dato è affidabile. "Tutto incluso" aggiunge manutenzioni e la quota di assicurazione e bollo.</p>`;
+  }
+
+  // Report mensile
+  const rows = allMonths().slice().reverse().map(k => {
+    const s = monthStats(k), tot = s.el + s.fuelEur;
+    return `<tr><td>${mShort(k)} ${k.slice(2,4)}</td><td>${s.km != null ? F0.format(s.km) + (s.kmPartial ? '*' : '') : '–'}</td><td>${F2.format(s.el)}</td><td>${F2.format(s.fuelEur)}</td><td>${F2.format(tot)}</td><td>${s.km && !s.kmPartial ? F2.format(tot / s.km * 100) : '–'}</td></tr>`;
+  }).join('');
+  h += `<h2>Report mensile</h2><div class="group scrollx"><table class="rep num"><tr><th>Mese</th><th>Km</th><th>Elettr. €</th><th>Benz. €</th><th>Tot. €</th><th>€/100</th></tr>${rows}</table></div>
+  <p class="note">* mese coperto solo in parte dalle letture km. Il €/100 km del singolo mese è indicativo: un pieno fatto a fine mese pesa tutto su quel mese.</p>`;
+
+  document.getElementById('home').innerHTML = h;
+  bindSeg('seg-range', v => { state.range = v; render(); });
+  bindChart('spend', i => { state.chartSel = state.chartSel === i ? null : i; render(); });
+}
+
+function latestFees() {
+  const by = {};
+  for (const f of db.fees) if (f.expiry && (!by[f.type] || f.expiry > by[f.type].expiry)) by[f.type] = f;
+  return Object.values(by).sort((a, b) => a.expiry < b.expiry ? -1 : 1);
+}
+
+/* Grafico a barre impilate: elettricità (base) + benzina */
+function spendChart(months) {
+  const data = months.map(monthStats);
+  const W = 340, H = 170, pl = 34, pb = 20, pt = 8, iw = W - pl - 4, ih = H - pb - pt;
+  const max = Math.max(10, ...data.map(d => d.el + d.fuelEur));
+  const step = niceStep(max / 3), top = Math.ceil(max / step) * step;
+  const y = v => pt + ih - v / top * ih;
+  const bw = Math.min(28, iw / data.length * .5), gap = 2;
+  let g = '';
+  for (let v = 0; v <= top + 1e-9; v += step) g += `<line class="grid" x1="${pl}" x2="${W - 4}" y1="${y(v)}" y2="${y(v)}"/><text x="${pl - 6}" y="${y(v) + 4}" text-anchor="end">${F0.format(v)}</text>`;
+  data.forEach((d, i) => {
+    const cx = pl + iw * (i + .5) / data.length;
+    if (state.chartSel === i) g += `<rect class="sel" x="${cx - iw / data.length / 2 + 2}" y="${pt}" width="${iw / data.length - 4}" height="${ih}" rx="6"/>`;
+    const hE = d.el / top * ih, hF = d.fuelEur / top * ih;
+    const yE = pt + ih - hE, yF = yE - (hE > 0 && hF > 0 ? gap : 0) - hF;
+    if (hE > 0) g += hF > 0 ? `<rect x="${cx - bw/2}" y="${yE}" width="${bw}" height="${hE}" fill="var(--el)"/>` : roundTop(cx - bw/2, yE, bw, hE, 'var(--el)');
+    if (hF > 0) g += roundTop(cx - bw/2, yF, bw, hF, 'var(--fuel)');
+    g += `<text x="${cx}" y="${H - 4}" text-anchor="middle">${mShort(d.k)}</text>`;
+    g += `<rect class="hit" data-i="${i}" x="${cx - iw / data.length / 2}" y="0" width="${iw / data.length}" height="${H}"/>`;
+  });
+  const sel = state.chartSel != null ? data[state.chartSel] : null;
+  const tot = data.reduce((t, d) => t + d.el + d.fuelEur, 0);
+  const head = sel
+    ? `<div><div class="sub">${mLabel(sel.k)}</div><div class="big num">${eur(sel.el + sel.fuelEur)}</div></div><div class="sub num" style="text-align:right">Elettricità ${eur(sel.el)}<br>Benzina ${eur(sel.fuelEur)}</div>`
+    : `<div><div class="sub">Ultimi ${data.length} mesi</div><div class="big num">${eur(tot)}</div></div><div class="sub">Tocca una barra</div>`;
+  return `<div class="chart" id="spend"><div class="head">${head}</div><svg class="plot" viewBox="0 0 ${W} ${H}" role="img" aria-label="Spesa mensile elettricità e benzina">${g}</svg>
+    <div class="legend"><span><i class="dot" style="background:var(--el)"></i>Elettricità</span><span><i class="dot" style="background:var(--fuel)"></i>Benzina</span></div></div>`;
+}
+function roundTop(x, y, w, h, fill) {
+  const r = Math.min(4, h, w / 2);
+  return `<path d="M${x},${y + h}V${y + r}Q${x},${y} ${x + r},${y}H${x + w - r}Q${x + w},${y} ${x + w},${y + r}V${y + h}Z" fill="${fill}"/>`;
+}
+function niceStep(raw) {
+  const p = Math.pow(10, Math.floor(Math.log10(raw))), n = raw / p;
+  return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10) * p;
+}
+function bindChart(id, fn) {
+  const el = document.getElementById(id);
+  if (el) el.querySelectorAll('.hit').forEach(r => r.addEventListener('click', () => fn(+r.dataset.i)));
+}
+function bindSeg(id, fn) {
+  const el = document.getElementById(id);
+  if (el) el.querySelectorAll('button').forEach(b => b.onclick = () => fn(b.dataset.v));
+}
+function setSeg(id, v) { document.querySelectorAll('#' + id + ' button').forEach(b => b.classList.toggle('on', b.dataset.v === v)); }
+
+/* ---------- Ricariche ---------- */
+function renderCharge() {
+  setSeg('seg-charge', state.chargeView);
+  const cur = tariffAt(today());
+  let h = `<h2>Tariffa casa</h2><div class="group"><button class="row" onclick="openTariffs()"><div class="main"><div class="t">Prezzo in bolletta</div><div class="s">Inseriscilo solo quando cambia</div></div><div class="v num">${cur != null ? F5(cur) + ' €/kWh' : 'da impostare'}</div><span class="chev">›</span></button></div>`;
+  const list = [...db.charges].sort(byDate).reverse();
+  if (!list.length) h += `<h2>&nbsp;</h2><div class="group"><div class="empty">Nessuna ricarica. Tocca + per aggiungerne una.</div></div>`;
+  else if (state.chargeView === 'list') {
+    const groups = groupBy(list, c => mk(c.date));
+    for (const [k, items] of groups) {
+      const s = monthStats(k);
+      h += `<h2>${mLabel(k)}<span class="num">${F1.format(s.kwhB)} kWh · ${eur(s.el)}</span></h2><div class="group">` + items.map(c => `
+        <button class="row" onclick="editCharge('${c.id}')"><div class="main">
+          <div class="t">${dShort(c.date)}${c.place !== 'casa' ? '<span class="pill">Colonnina</span>' : ''}</div>
+          <div class="soc"><i style="left:${c.start}%;width:${Math.max(0, c.end - c.start)}%"></i></div>
+          <div class="s num">${c.start}% → ${c.end}%</div></div>
+          <div class="v"><div class="num">${F1.format(kwhBatt(c))} kWh</div><div class="s num">${eur(chargeCost(c))}</div></div></button>`).join('') + `</div>`;
+    }
+  } else {
+    const ks = [...new Set(list.map(c => mk(c.date)))];
+    for (const k of ks) {
+      const s = monthStats(k);
+      h += `<h2>${mLabel(k)}<span>${s.n} ricariche</span></h2><div class="group">
+        ${kv('kWh caricati in batteria', F1.format(s.kwhB) + ' kWh')}
+        ${s.kwhHome ? kv(`kWh dalla rete di casa (+${F0.format(db.settings.loss)}%)`, F1.format(s.kwhHomeGrid) + ' kWh') : ''}
+        ${s.kwhHome ? kv('Costo casa', eur(s.elHome)) : ''}
+        ${s.kwhPub ? kv('Colonnina', F1.format(s.kwhPub) + ' kWh · ' + eur(s.elPub)) : ''}
+        ${kv('<b>Totale</b>', '<b>' + eur(s.el) + '</b>')}
+      </div>`;
+    }
+    h += `<p class="note">I kWh dalla rete di casa sono quelli della bolletta: kWh caricati + ${F0.format(db.settings.loss)}% di dispersione (modificabile nelle impostazioni).</p>`;
+  }
+  document.getElementById('charge').innerHTML = h;
+}
+const kv = (k, v) => `<div class="row"><div class="main">${k}</div><div class="v num">${v}</div></div>`;
+function groupBy(arr, fn) { const m = new Map(); for (const x of arr) { const k = fn(x); if (!m.has(k)) m.set(k, []); m.get(k).push(x); } return m; }
+
+/* ---------- Benzina ---------- */
+function renderFuel() {
+  setSeg('seg-fuel', state.fuelView);
+  const list = [...db.fuel].sort(byDate).reverse();
+  let h = '';
+  if (!list.length) h = `<h2>&nbsp;</h2><div class="group"><div class="empty">Nessun rifornimento. Tocca + per aggiungerne uno.</div></div>`;
+  else if (state.fuelView === 'list') {
+    for (const [k, items] of groupBy(list, f => mk(f.date))) {
+      const s = monthStats(k);
+      h += `<h2>${mLabel(k)}<span class="num">${F1.format(s.fuelL)} L · ${eur(s.fuelEur)}</span></h2><div class="group">` + items.map(f => `
+        <button class="row" onclick="editFuel('${f.id}')"><div class="main"><div class="t">${dShort(f.date)}</div><div class="s num">${F3.format(f.ppl)} €/L</div></div>
+        <div class="v"><div class="num">${eur(f.total)}</div><div class="s num">${F2.format(liters(f))} L</div></div></button>`).join('') + `</div>`;
+    }
+  } else {
+    const rows = allMonths().slice().reverse().map(k => {
+      const s = monthStats(k);
+      if (!s.nf) return '';
+      return `<tr><td>${mShort(k)} ${k.slice(0,4)}</td><td>${s.nf}</td><td>${F1.format(s.fuelL)}</td><td>${F3.format(s.fuelEur / s.fuelL)}</td><td>${F2.format(s.fuelEur)}</td></tr>`;
+    }).join('');
+    const tot = list.reduce((t, f) => t + f.total, 0), tl = list.reduce((t, f) => t + liters(f), 0);
+    h = `<h2>Per mese</h2><div class="group scrollx"><table class="rep num"><tr><th>Mese</th><th>N.</th><th>Litri</th><th>€/L medio</th><th>Totale</th></tr>${rows}
+      <tr><td><b>Totale</b></td><td>${list.length}</td><td>${F1.format(tl)}</td><td>${F3.format(tot / tl)}</td><td><b>${F2.format(tot)}</b></td></tr></table></div>`;
+  }
+  document.getElementById('fuel').innerHTML = h;
+}
+
+/* ---------- Km ---------- */
+function renderKm() {
+  const o = odoSorted().reverse();
+  let h = '';
+  const months = allMonths().map(k => ({ k, r: kmBetween(k + '-01', addMonths(k, 1) + '-01') })).filter(x => x.r);
+  if (months.length) {
+    const last6 = months.slice(-6);
+    h += `<h2>Km al mese</h2>` + kmChart(last6);
+    h += `<div class="group" style="margin-top:10px">` + months.slice().reverse().map(x =>
+      kv(mLabel(x.k) + (x.r.partial ? ' <span class="pill">parziale</span>' : ''), F0.format(x.r.km) + ' km')).join('') + `</div>
+      <p class="note">Calcolati dalle letture del contachilometri, anche se non le fai il primo del mese: tra due letture i km vengono distribuiti in modo uniforme sui giorni.</p>`;
+  }
+  h += `<h2>Letture contachilometri</h2><div class="group">` + (o.length ? o.map((r, i) => {
+    const prev = o[i + 1];
+    return `<button class="row" onclick="editOdo('${r.id}')"><div class="main"><div class="t">${dLabel(r.date)}</div>${prev ? `<div class="s num">+${F0.format(r.km - prev.km)} km in ${Math.round(days(r.date) - days(prev.date))} gg</div>` : ''}</div><div class="v num">${F0.format(r.km)} km</div><span class="chev">›</span></button>`;
+  }).join('') : `<div class="empty">Aggiungi la lettura dei km (ad esempio il primo di ogni mese).</div>`) + `</div>`;
+  document.getElementById('km').innerHTML = h;
+  bindChart('kmchart', i => { state.kmSel = state.kmSel === i ? null : i; render(); });
+}
+function kmChart(arr) {
+  const W = 340, H = 150, pl = 40, pb = 20, pt = 8, iw = W - pl - 4, ih = H - pb - pt;
+  const max = Math.max(100, ...arr.map(x => x.r.km)), step = niceStep(max / 3), top = Math.ceil(max / step) * step;
+  const y = v => pt + ih - v / top * ih, bw = Math.min(28, iw / arr.length * .5);
+  let g = '';
+  for (let v = 0; v <= top + 1e-9; v += step) g += `<line class="grid" x1="${pl}" x2="${W - 4}" y1="${y(v)}" y2="${y(v)}"/><text x="${pl - 6}" y="${y(v) + 4}" text-anchor="end">${F0.format(v)}</text>`;
+  arr.forEach((x, i) => {
+    const cx = pl + iw * (i + .5) / arr.length, hh = x.r.km / top * ih;
+    if (state.kmSel === i) g += `<rect class="sel" x="${cx - iw / arr.length / 2 + 2}" y="${pt}" width="${iw / arr.length - 4}" height="${ih}" rx="6"/>`;
+    g += roundTop(cx - bw / 2, pt + ih - hh, bw, hh, 'var(--blue)');
+    g += `<text x="${cx}" y="${H - 4}" text-anchor="middle">${mShort(x.k)}</text><rect class="hit" data-i="${i}" x="${cx - iw / arr.length / 2}" y="0" width="${iw / arr.length}" height="${H}"/>`;
+  });
+  const sel = state.kmSel != null ? arr[state.kmSel] : null;
+  const avg = arr.filter(x => !x.r.partial), a = avg.length ? avg.reduce((t, x) => t + x.r.km, 0) / avg.length : null;
+  const head = sel ? `<div><div class="sub">${mLabel(sel.k)}${sel.r.partial ? ' (parziale)' : ''}</div><div class="big num">${F0.format(sel.r.km)} km</div></div>`
+    : `<div><div class="sub">Media mesi completi</div><div class="big num">${a != null ? F0.format(a) + ' km' : '–'}</div></div><div class="sub">Tocca una barra</div>`;
+  return `<div class="chart" id="kmchart"><div class="head">${head}</div><svg class="plot" viewBox="0 0 ${W} ${H}" role="img" aria-label="Km percorsi al mese">${g}</svg></div>`;
+}
+
+/* ---------- Spese ---------- */
+function renderCost() {
+  setSeg('seg-cost', state.costTab);
+  let h = '';
+  if (state.costTab === 'maint') {
+    const l = [...db.maint].sort(byDate).reverse(), tot = l.reduce((t, m) => t + (m.cost || 0), 0);
+    h = `<h2>Interventi<span class="num">${eur(tot)}</span></h2><div class="group">` + (l.length ? l.map(m => `
+      <button class="row" onclick="editMaint('${m.id}')"><div class="main"><div class="t">${esc(m.desc)}</div><div class="s">${dLabel(m.date)}${m.km ? ' · ' + F0.format(m.km) + ' km' : ''}</div></div><div class="v num">${eur(m.cost)}</div><span class="chev">›</span></button>`).join('')
+      : `<div class="empty">Nessuna manutenzione registrata.</div>`) + `</div>`;
+  } else {
+    const l = [...db.fees].sort(byDate).reverse();
+    h = `<h2>Pagamenti</h2><div class="group">` + (l.length ? l.map(f => `
+      <button class="row" onclick="editFee('${f.id}')"><div class="main"><div class="t">${esc(f.type)}${f.desc ? ' · ' + esc(f.desc) : ''}</div><div class="s">Pagato ${dLabel(f.date)}${f.expiry ? ' · scade ' + dLabel(f.expiry) : ''}</div></div><div class="v num">${eur(f.cost)}</div><span class="chev">›</span></button>`).join('')
+      : `<div class="empty">Nessun pagamento registrato.</div>`) + `</div>`;
+    const years = groupBy(l, f => f.date.slice(0, 4));
+    if (l.length) h += `<h2>Per anno</h2><div class="group">` + [...years].map(([y, it]) => kv(y, eur(it.reduce((t, f) => t + (f.cost || 0), 0)))).join('') + `</div>`;
+  }
+  document.getElementById('cost').innerHTML = h;
+}
+
+/* ================= Fogli di modifica ================= */
+let sheetSave = null;
+function openSheet(title, body, onSave, onDelete) {
+  const s = document.getElementById('sheet');
+  s.innerHTML = `<div class="bar"><button onclick="closeSheet()">Annulla</button><b>${title}</b><button id="sv">${onSave ? 'Salva' : ''}</button></div>${body}
+    ${onDelete ? `<div class="group" style="margin-top:28px"><button class="row danger" id="del">Elimina</button></div>` : ''}`;
+  sheetSave = onSave;
+  if (onSave) s.querySelector('#sv').onclick = () => { if (onSave() !== false) closeSheet(); };
+  if (onDelete) s.querySelector('#del').onclick = () => { if (confirm('Eliminare questa voce?')) { onDelete(); closeSheet(); } };
+  document.getElementById('scrim').classList.add('on'); s.classList.add('on'); s.scrollTop = 0;
+  document.body.style.overflow = 'hidden';
+}
+function closeSheet() { document.getElementById('scrim').classList.remove('on'); document.getElementById('sheet').classList.remove('on'); document.body.style.overflow = ''; }
+const fld = (label, id, val, opt = {}) => `<div class="field"><label for="${id}">${label}</label><input id="${id}" ${opt.type === 'date' ? 'type="date"' : opt.type === 'text' ? 'type="text"' : 'type="text" inputmode="decimal"'} value="${esc(val ?? '')}" placeholder="${esc(opt.ph || '')}">${opt.u ? `<span class="u">${opt.u}</span>` : ''}</div>`;
+const val = id => document.getElementById(id).value;
+const fmtIn = (v, d) => v == null ? '' : String(+v.toFixed(d)).replace('.', ',');
+function upsert(arr, obj) { const i = arr.findIndex(x => x.id === obj.id); if (i >= 0) arr[i] = obj; else arr.push(obj); }
+function remove(arr, id) { const i = arr.findIndex(x => x.id === id); if (i >= 0) arr.splice(i, 1); save(); }
+function need(cond, msg) { if (!cond) toast(msg); return !!cond; }
+
+function editCharge(id) {
+  const c = db.charges.find(x => x.id === id) || { id: uid(), date: today(), start: null, end: 100, kwh: null, place: 'casa', cost: null };
+  openSheet(id ? 'Ricarica' : 'Nuova ricarica', `
+    <div class="group">${fld('Data', 'c-date', c.date, { type: 'date' })}
+      <div class="field"><label>Dove</label><div class="segc" id="c-place"><button data-v="casa">Casa</button><button data-v="colonnina">Colonnina</button></div></div>
+      ${fld('Inizio', 'c-start', c.start, { u: '%', ph: '25' })}${fld('Fine', 'c-end', c.end, { u: '%', ph: '100' })}
+      ${fld('kWh caricati', 'c-kwh', fmtIn(c.kwh, 3), { u: 'kWh', ph: 'auto' })}
+      <div id="c-pubbox">${fld('Costo totale', 'c-cost', fmtIn(c.cost, 2), { u: '€', ph: '0,00' })}</div></div>
+    <div class="preview num" id="c-prev"></div>
+    <p class="note">Lascia "kWh caricati" vuoto per calcolarli da capacità batteria (${F1.format(db.settings.capacity)} kWh) × differenza di percentuale. Se il dato lo leggi dall'auto o dalla colonnina, inseriscilo.</p>`,
+    () => {
+      const o = { id: c.id, date: val('c-date'), start: num(val('c-start')), end: num(val('c-end')), kwh: num(val('c-kwh')), place: c.place, cost: c.place === 'casa' ? null : num(val('c-cost')) };
+      if (!need(o.date && o.start != null && o.end != null && o.end > o.start && o.end <= 100 && o.start >= 0, 'Controlla data e percentuali')) return false;
+      if (o.place !== 'casa' && !need(o.cost != null, 'Inserisci il costo della colonnina')) return false;
+      upsert(db.charges, o); save(); toast('Ricarica salvata');
+    }, id && (() => remove(db.charges, id)));
+  const upd = () => {
+    setSeg('c-place', c.place);
+    document.getElementById('c-pubbox').style.display = c.place === 'casa' ? 'none' : '';
+    const t = { date: val('c-date'), start: num(val('c-start')), end: num(val('c-end')), kwh: num(val('c-kwh')), place: c.place, cost: num(val('c-cost')) };
+    const p = document.getElementById('c-prev');
+    if (t.start == null || t.end == null || t.end <= t.start) { p.innerHTML = ''; return; }
+    if (t.place === 'casa') {
+      const tr = tariffAt(t.date);
+      p.innerHTML = `<b>${F1.format(kwhBatt(t))} kWh</b> in batteria · ${F1.format(kwhGrid(t))} kWh dalla rete · ` + (tr != null ? `<b>${eur(chargeCost(t))}</b>` : `<span style="color:var(--orange)">imposta la tariffa casa</span>`);
+    } else p.innerHTML = `<b>${F1.format(kwhBatt(t))} kWh</b>` + (t.cost ? ` · ${F3.format(t.cost / kwhBatt(t))} €/kWh` : '');
+  };
+  bindSeg('c-place', v => { c.place = v; upd(); });
+  ['c-date', 'c-start', 'c-end', 'c-kwh', 'c-cost'].forEach(i => document.getElementById(i).addEventListener('input', upd));
+  upd();
+  if (!id) setTimeout(() => document.getElementById('c-start').focus(), 350);
+}
+
+function editFuel(id) {
+  const f = db.fuel.find(x => x.id === id) || { id: uid(), date: today(), total: null, ppl: null };
+  const lastPpl = !id && [...db.fuel].sort(byDate).pop();
+  openSheet(id ? 'Rifornimento' : 'Nuovo rifornimento', `
+    <div class="group">${fld('Data', 'f-date', f.date, { type: 'date' })}${fld('Totale', 'f-tot', fmtIn(f.total, 2), { u: '€', ph: '0,00' })}
+    ${fld('Prezzo al litro', 'f-ppl', fmtIn(f.ppl, 3), { u: '€/L', ph: lastPpl ? fmtIn(lastPpl.ppl, 3) : '1,799' })}</div>
+    <div class="preview num" id="f-prev"></div>`,
+    () => {
+      const o = { id: f.id, date: val('f-date'), total: num(val('f-tot')), ppl: num(val('f-ppl')) };
+      if (!need(o.date && o.total > 0 && o.ppl > 0, 'Inserisci totale e prezzo al litro')) return false;
+      upsert(db.fuel, o); save(); toast('Rifornimento salvato');
+    }, id && (() => remove(db.fuel, id)));
+  const upd = () => { const t = num(val('f-tot')), p = num(val('f-ppl')); document.getElementById('f-prev').innerHTML = t > 0 && p > 0 ? `<b>${F2.format(t / p)} litri</b>` : ''; };
+  ['f-tot', 'f-ppl'].forEach(i => document.getElementById(i).addEventListener('input', upd)); upd();
+}
+
+function editOdo(id) {
+  const r = db.odo.find(x => x.id === id) || { id: uid(), date: today(), km: null };
+  openSheet(id ? 'Lettura km' : 'Nuova lettura km', `<div class="group">${fld('Data', 'o-date', r.date, { type: 'date' })}${fld('Contachilometri', 'o-km', r.km, { u: 'km', ph: '0' })}</div>
+    <p class="note">Basta una lettura al mese (idealmente il primo giorno), ma puoi aggiungerne quante vuoi.</p>`,
+    () => {
+      const o = { id: r.id, date: val('o-date'), km: num(val('o-km')) };
+      if (!need(o.date && o.km >= 0, 'Inserisci data e km')) return false;
+      upsert(db.odo, o); save(); toast('Lettura salvata');
+    }, id && (() => remove(db.odo, id)));
+}
+
+function editMaint(id) {
+  const m = db.maint.find(x => x.id === id) || { id: uid(), date: today(), desc: '', cost: null, km: null };
+  openSheet(id ? 'Manutenzione' : 'Nuova manutenzione', `<div class="group">${fld('Data', 'm-date', m.date, { type: 'date' })}
+    ${fld('Descrizione', 'm-desc', m.desc, { type: 'text', ph: 'Tagliando' })}${fld('Costo', 'm-cost', fmtIn(m.cost, 2), { u: '€', ph: '0,00' })}
+    ${fld('Km', 'm-km', m.km, { u: 'km', ph: 'facoltativo' })}</div>`,
+    () => {
+      const o = { id: m.id, date: val('m-date'), desc: val('m-desc').trim(), cost: num(val('m-cost')) || 0, km: num(val('m-km')) };
+      if (!need(o.date && o.desc, 'Inserisci data e descrizione')) return false;
+      upsert(db.maint, o); save(); toast('Manutenzione salvata');
+    }, id && (() => remove(db.maint, id)));
+}
+
+function editFee(id) {
+  const f = db.fees.find(x => x.id === id) || { id: uid(), date: today(), type: 'Assicurazione', desc: '', cost: null, expiry: '' };
+  const types = ['Assicurazione', 'Bollo', 'Revisione', 'Altro'];
+  openSheet(id ? f.type : 'Nuovo pagamento', `<div class="group">
+    <div class="field"><label for="e-type">Tipo</label><select id="e-type">${types.map(t => `<option ${t === f.type ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
+    ${fld('Pagato il', 'e-date', f.date, { type: 'date' })}${fld('Costo', 'e-cost', fmtIn(f.cost, 2), { u: '€', ph: '0,00' })}
+    ${fld('Scadenza', 'e-exp', f.expiry, { type: 'date' })}${fld('Note', 'e-desc', f.desc, { type: 'text', ph: 'Compagnia, polizza…' })}</div>
+    <p class="note">Se lasci vuota la scadenza viene impostata a un anno dal pagamento. Le scadenze compaiono nel Riepilogo.</p>`,
+    () => {
+      const o = { id: f.id, type: val('e-type'), date: val('e-date'), cost: num(val('e-cost')) || 0, expiry: val('e-exp'), desc: val('e-desc').trim() };
+      if (!need(o.date, 'Inserisci la data')) return false;
+      if (!o.expiry) { const d = new Date(o.date); d.setFullYear(d.getFullYear() + 1); o.expiry = d.toISOString().slice(0, 10); }
+      upsert(db.fees, o); save(); toast('Pagamento salvato');
+    }, id && (() => remove(db.fees, id)));
+}
+
+function openTariffs() {
+  const l = [...db.tariffs].sort((a, b) => a.from < b.from ? 1 : -1);
+  openSheet('Tariffa casa', `
+    <h2>Nuova tariffa</h2><div class="group">${fld('Valida dal', 't-from', today().slice(0, 8) + '01', { type: 'date' })}${fld('Prezzo', 't-price', '', { u: '€/kWh', ph: '0,30634' })}</div>
+    <div class="group" style="margin-top:10px"><button class="row btn" id="t-add">Aggiungi tariffa</button></div>
+    <h2>Storico</h2><div class="group">${l.length ? l.map(t => `<div class="row"><div class="main">dal ${dLabel(t.from)}</div><div class="v num">${F5(t.price)} €/kWh</div><button style="color:var(--red);margin-left:8px" data-del="${t.id}">Elimina</button></div>`).join('') : '<div class="empty">Nessuna tariffa</div>'}</div>
+    <p class="note">Il prezzo vale da quella data fino alla tariffa successiva: lo inserisci una volta sola e tutte le ricariche a casa da lì in poi lo usano, anche se cambia a metà mese. Usa il prezzo per kWh tutto compreso della bolletta (energia, oneri, IVA).</p>`, null);
+  document.getElementById('t-add').onclick = () => {
+    const t = { id: uid(), from: val('t-from'), price: num(val('t-price')) };
+    if (!need(t.from && t.price > 0, 'Inserisci data e prezzo')) return;
+    db.tariffs = db.tariffs.filter(x => x.from !== t.from); db.tariffs.push(t); save(); toast('Tariffa aggiunta'); openTariffs();
+  };
+  document.querySelectorAll('[data-del]').forEach(b => b.onclick = () => { if (confirm('Eliminare questa tariffa?')) { remove(db.tariffs, b.dataset.del); openTariffs(); } });
+}
+const F5 = v => String(v).replace('.', ',');
+
+function openSettings() {
+  const s = db.settings;
+  openSheet('Impostazioni', `
+    <div class="group">${fld('Nome auto', 's-name', s.carName, { type: 'text' })}${fld('Capacità batteria', 's-cap', fmtIn(s.capacity, 2), { u: 'kWh' })}${fld('Dispersione ricarica casa', 's-loss', fmtIn(s.loss, 1), { u: '%' })}</div>
+    <p class="note">La dispersione si applica solo alle ricariche di casa: rappresenta l'energia persa tra contatore e batteria (caricatore di bordo, cavo, prolunga).</p>
+    <h2>Backup</h2><div class="group">
+      <button class="row btn" id="s-exp">Esporta backup</button>
+      <button class="row btn" id="s-imp">Importa backup</button></div>
+    <p class="note">I dati restano solo su questo iPhone. Esporta un backup ogni tanto e salvalo su iCloud Drive (File). L'importazione sostituisce tutti i dati attuali.</p>
+    <div class="group" style="margin-top:28px"><button class="row danger" id="s-wipe">Cancella tutti i dati</button></div>`,
+    () => {
+      const cap = num(val('s-cap')), loss = num(val('s-loss'));
+      if (!need(cap > 0 && loss >= 0 && loss < 100, 'Valori non validi')) return false;
+      db.settings = { carName: val('s-name').trim() || 'Jaecoo 7', capacity: cap, loss }; save(); toast('Impostazioni salvate');
+    });
+  document.getElementById('s-exp').onclick = exportData;
+  document.getElementById('s-imp').onclick = () => document.getElementById('fileIn').click();
+  document.getElementById('s-wipe').onclick = () => {
+    if (confirm('Cancellare tutti i dati da questo dispositivo? L\'operazione non si può annullare: esporta prima un backup.')) { db = structuredClone(DEFAULT); save(); closeSheet(); toast('Dati cancellati'); }
+  };
+}
+async function exportData() {
+  const name = 'jaecoo7-backup-' + today() + '.json';
+  const file = new File([JSON.stringify(db, null, 1)], name, { type: 'application/json' });
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try { await navigator.share({ files: [file], title: name }); return; } catch (e) { if (e.name === 'AbortError') return; }
+  }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(file); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+document.getElementById('fileIn').addEventListener('change', async e => {
+  const f = e.target.files[0]; e.target.value = '';
+  if (!f) return;
+  try {
+    const d = JSON.parse(await f.text());
+    if (!d || !d.version || !Array.isArray(d.charges)) throw new Error();
+    const n = d.charges.length + d.fuel.length + d.odo.length + d.maint.length + d.fees.length;
+    if (!confirm(`Importare ${n} voci? I dati attuali verranno sostituiti.`)) return;
+    db = Object.assign(structuredClone(DEFAULT), d, { settings: Object.assign({}, DEFAULT.settings, d.settings) });
+    save(); closeSheet(); toast('Backup importato');
+  } catch (err) { toast('File non valido'); }
+});
+
+/* ================= Navigazione ================= */
+document.querySelectorAll('.tabbar button').forEach(b => b.onclick = () => {
+  state.page = b.dataset.p;
+  document.querySelectorAll('.tabbar button').forEach(x => x.classList.toggle('on', x === b));
+  document.querySelectorAll('.page').forEach(p => p.classList.toggle('on', p.id === 'p-' + state.page));
+  window.scrollTo(0, 0); render();
+});
+bindSeg('seg-charge', v => { state.chargeView = v; render(); });
+bindSeg('seg-fuel', v => { state.fuelView = v; render(); });
+bindSeg('seg-cost', v => { state.costTab = v; render(); });
+
+let tt;
+function toast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(tt); tt = setTimeout(() => t.classList.remove('on'), 1800); }
+
+if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js').catch(() => {});
+if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+render();
+</script>
+</body>
+</html>
