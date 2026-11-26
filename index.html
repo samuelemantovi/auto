@@ -16,6 +16,7 @@
 :root{
   --bg:#F2F2F7; --card:#FFFFFF; --card2:#F2F2F7; --sep:rgba(60,60,67,.18);
   --ink:#000; --ink2:rgba(60,60,67,.62); --ink3:rgba(60,60,67,.32);
+  --maint:#1BAF7A; --fees:#E87BA4;
   --blue:#007AFF; --el:#007AFF; --fuel:#FF9500; --green:#34C759; --red:#FF3B30; --orange:#FF9500;
   --bar:rgba(249,249,249,.86); --fill:rgba(118,118,128,.12); --seg:#FFFFFF;
 }
@@ -23,6 +24,7 @@
   :root{
     --bg:#000; --card:#1C1C1E; --card2:#2C2C2E; --sep:rgba(84,84,88,.6);
     --ink:#fff; --ink2:rgba(235,235,245,.6); --ink3:rgba(235,235,245,.3);
+    --maint:#199E70; --fees:#D55181;
     --blue:#0A84FF; --el:#0A84FF; --fuel:#D47800; --green:#30D158; --red:#FF453A; --orange:#FF9F0A;
     --bar:rgba(22,22,24,.86); --fill:rgba(118,118,128,.24); --seg:#636366;
   }
@@ -85,6 +87,9 @@ button.row:active{background:var(--fill)}
 .tile.wide{grid-column:1/-1}
 .tile .s{font-size:13px;color:var(--ink2);margin-top:4px;line-height:1.35}
 .tile.save .n{color:var(--green)}
+.gauge{position:relative;height:10px;border-radius:5px;background:var(--fill);margin:10px 0 4px;overflow:hidden}
+.gauge i{position:absolute;left:0;top:0;bottom:0;border-radius:5px;background:var(--fuel)}
+.gauge b{position:absolute;top:0;bottom:0;width:2px;margin-left:-1px;background:var(--card)}
 /* Scorri per eliminare */
 .sw{position:relative;overflow:hidden}
 .sw+.sw .row::before{content:"";position:absolute;top:0;left:16px;right:0;border-top:.5px solid var(--sep)}
@@ -98,6 +103,28 @@ button.row:active{background:var(--fill)}
 .hero .stats{display:grid;grid-template-columns:repeat(3,1fr);margin-top:12px;border-top:.5px solid var(--sep);padding-top:12px}
 .hero .stats div{text-align:center}
 .hero .stats div+div{border-left:.5px solid var(--sep)}
+.ring{position:absolute;top:10px;right:10px;width:66px;height:66px;border-radius:50%;
+  background:color-mix(in srgb,var(--card) 78%,transparent);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);box-shadow:0 4px 14px rgba(0,0,0,.12)}
+.ring svg{position:absolute;inset:5px;width:56px;height:56px}
+.ring-t{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1}
+.ring-t b{font-size:14px;font-weight:700}.ring-t span{font-size:9px;color:var(--ink2);margin-top:2px}
+.hero.anim .ring-arc{animation:ring 1.1s cubic-bezier(.2,.9,.25,1)}
+@keyframes ring{from{stroke-dasharray:0 var(--c)}}
+.delta{font-size:12px;font-weight:600;margin-top:3px;color:var(--ink2)}
+.delta.good{color:var(--green)}.delta.bad{color:var(--red)}
+.delta span{font-weight:400;color:var(--ink2)}
+svg.cal rect.d{rx:3.5}
+.cal-legend{display:flex;align-items:center;justify-content:flex-end;gap:4px;font-size:11px;color:var(--ink2);padding:6px 4px 0}
+.cal-legend i{width:11px;height:11px;border-radius:3px;display:inline-block}
+.donut-wrap{display:flex;gap:14px;align-items:center}
+.donut-wrap svg{width:44%;flex:none}
+.donut-leg{flex:1;min-width:0;font-size:14px}
+.donut-leg button{display:flex;align-items:center;gap:8px;width:100%;padding:5px 0;text-align:left}
+.donut-leg button{align-items:flex-start}
+.donut-leg button .dot{margin-top:6px}
+.donut-leg button .nm{flex:1;min-width:0;line-height:1.25}
+.donut-leg button .vl{color:var(--ink2);font-size:13px;font-variant-numeric:tabular-nums}
+.donut-leg button.dim{opacity:.4}
 .hero .stats b{display:block;font-size:17px;font-weight:600}
 .hero .stats span{font-size:12px;color:var(--ink2)}
 
@@ -233,11 +260,11 @@ const KEY = 'jaecoo7-data';
 const DEFAULT = {
   version: 1,
   settings: { carName: 'Jaecoo 7', carSub: 'SHS-P · 2026 · Moonlight Silver', carColor: '#C3C7CC', capacity: 18.3, loss: 10,
-    petrolRef: 6.0, serviceKm: 15000, serviceMonths: 12, regDate: '' },
+    petrolRef: 6.0, serviceKm: 15000, serviceMonths: 12, regDate: '', tankL: 60, rangeMax: 1117, evCons: 20 },
   tariffs: [], charges: [], fuel: [], odo: [], maint: [], fees: []
 };
 let db = load();
-const state = { page: 'home', chargeView: 'list', fuelView: 'list', costTab: 'maint', range: '6', chartSel: null, kmSel: null, trendSel: null };
+const state = { page: 'home', chargeView: 'list', fuelView: 'list', costTab: 'maint', range: '6', chartSel: null, kmSel: null, trendSel: null, consLSel: null, consKSel: null, calSel: null, donutSel: null, year: null };
 
 function load() {
   try {
@@ -360,21 +387,45 @@ function periodStats(months) {
   return { start, end: last, km: r.km, el, kwh, fe, fl, mt, fees, energy: el + fe, ppl, petrolOnly, saving: petrolOnly != null ? petrolOnly - (el + fe) : null };
 }
 
-// Consumo reale "pieno-pieno": litri messi dopo un pieno fino al pieno successivo (compreso) / km percorsi
-function fullToFull() {
-  const fu = [...db.fuel].sort(byDate), out = [];
-  let prev = null, acc = 0;
-  for (const f of fu) {
-    if (prev) acc += liters(f);
-    if (f.full) {
-      if (prev) {
-        const k0 = prev.km ?? kmAt(prev.date), k1 = f.km ?? kmAt(f.date);
-        if (k0 != null && k1 != null && k1 > k0) out.push({ from: prev.date, to: f.date, km: k1 - k0, l: acc, est: !(prev.km && f.km) });
-      }
-      prev = f; acc = 0;
+// Consumo reale tra rifornimenti. Serve sapere quanta benzina c'era nel serbatoio:
+//  - pieno completo: dopo = capienza, prima = capienza − litri messi
+//  - livello indicato (% dell'indicatore prima di rifornire): prima = livello × capienza, dopo = prima + litri
+// Benzina consumata tra A e B = (serbatoio dopo A + litri messi in mezzo senza livello) − serbatoio prima di B
+function fuelIntervals() {
+  const T = db.settings.tankL, out = [];
+  let anchor = null, acc = 0;
+  for (const f of [...db.fuel].sort(byDate)) {
+    const L = liters(f);
+    let before = null, after = null;
+    if (f.full) { after = T; before = Math.max(0, T - L); }
+    else if (f.level != null) { before = f.level / 100 * T; after = Math.min(T, before + L); }
+    if (anchor && before != null) {
+      const k0 = anchor.km ?? kmAt(anchor.date), k1 = f.km ?? kmAt(f.date), used = anchor.after + acc - before;
+      if (k0 != null && k1 != null && k1 > k0 && used > 0) out.push({ from: anchor.date, to: f.date, km: k1 - k0, l: used, est: !(anchor.km && f.km) });
     }
+    if (after != null) { anchor = { date: f.date, km: f.km, after }; acc = 0; } else if (anchor) acc += L;
   }
   return out;
+}
+// Benzina stimata ora nel serbatoio: dall'ultimo rifornimento con livello noto, meno i km fatti × consumo recente
+function tankNow() {
+  const T = db.settings.tankL, fu = [...db.fuel].sort(byDate);
+  let anchor = null, acc = 0;
+  for (const f of fu) {
+    const L = liters(f);
+    if (f.full) { anchor = { f, after: T }; acc = 0; }
+    else if (f.level != null) { anchor = { f, after: Math.min(T, f.level / 100 * T + L) }; acc = 0; }
+    else if (anchor) acc += L;
+  }
+  if (!anchor) return null;
+  const o = odoSorted(); if (!o.length) return null;
+  const k0 = anchor.f.km ?? kmAt(anchor.f.date), cur = o[o.length - 1];
+  if (k0 == null || cur.date < anchor.f.date) return null;
+  const iv = fuelIntervals().slice(-3), p = periodStats(3);
+  const rate = iv.length ? iv.reduce((t, x) => t + x.l, 0) / iv.reduce((t, x) => t + x.km, 0) : p && p.km ? p.fl / p.km : null;
+  if (rate == null) return null;
+  const l = Math.max(0, Math.min(T, anchor.after + acc - (cur.km - k0) * rate));
+  return { l, pct: l / T * 100, at: cur.date, rate };
 }
 
 // Scadenze: assicurazione/bollo (dalla data di scadenza), revisione, tagliando
@@ -417,8 +468,28 @@ function render() {
   document.getElementById('carName').textContent = db.settings.carName || 'Jaecoo 7';
   ({ home: renderHome, charge: renderCharge, fuel: renderFuel, km: renderKm, cost: renderCost })[state.page]();
 }
-const tile = (label, value, unit, dot) =>
-  `<div class="tile"><div class="l">${dot ? `<i class="dot" style="background:var(${dot})"></i>` : ''}${label}</div><div class="n num">${value}${unit ? `<small>${unit}</small>` : ''}</div></div>`;
+const tile = (label, value, unit, dot, extra = '') =>
+  `<div class="tile"><div class="l">${dot ? `<i class="dot" style="background:var(${dot})"></i>` : ''}${label}</div><div class="n num">${value}${unit ? `<small>${unit}</small>` : ''}</div>${extra}</div>`;
+
+/* Confronto con lo stesso periodo del mese precedente (dal giorno 1 allo stesso giorno) */
+function statsBetween(a, b) { // [a, b)
+  const inR = x => x.date >= a && x.date < b, ch = db.charges.filter(inR), fu = db.fuel.filter(inR), r = kmBetween(a, b);
+  return { el: ch.reduce((t, c) => t + chargeCost(c), 0), fuel: fu.reduce((t, f) => t + f.total, 0), km: r && !r.partial ? r.km : null };
+}
+function monthCompare() {
+  const t = today(), k = mk(t), pk = addMonths(k, -1), d = +t.slice(8, 10);
+  const pLen = new Date(+pk.slice(0, 4), +pk.slice(5, 7), 0).getDate();
+  const cur = statsBetween(k + '-01', fromDays(days(t) + 1));
+  const prev = statsBetween(pk + '-01', d >= pLen ? k + '-01' : pk + '-' + String(d + 1).padStart(2, '0'));
+  return { cur, prev, label: `vs 1–${Math.min(d, pLen)} ${mShort(pk)}` };
+}
+function delta(cur, prev, lowerIsBetter, label) {
+  if (cur == null || prev == null || prev < 0.01) return '';
+  const p = (cur - prev) / prev * 100;
+  if (Math.abs(p) < 1) return `<div class="delta">= <span>${label}</span></div>`;
+  const cls = lowerIsBetter == null ? '' : (p < 0) === lowerIsBetter ? 'good' : 'bad';
+  return `<div class="delta ${cls}">${p > 0 ? '▲' : '▼'} ${F0.format(Math.abs(p))}% <span>${label}</span></div>`;
+}
 
 /* Illustrazione dell'auto: SUV compatto visto di lato, colore carrozzeria dalle impostazioni */
 function shade(hex, t) { // t>0 schiarisce verso il bianco, t<0 scurisce verso il nero
@@ -481,24 +552,34 @@ function carSvg(color) {
   ${wheel(320 - 74)}${wheel(320 - 246)}
 </svg>`;
 }
+/* Anello della batteria (% a fine dell'ultima ricarica) */
+function batteryRing(pct, when) {
+  const r = 22, c = 2 * Math.PI * r, col = pct >= 50 ? 'var(--green)' : pct >= 20 ? 'var(--orange)' : 'var(--red)';
+  return `<div class="ring" role="img" aria-label="Batteria al ${pct}% dopo la ricarica del ${when}">
+    <svg viewBox="0 0 56 56"><circle cx="28" cy="28" r="${r}" fill="none" stroke="var(--fill)" stroke-width="5"/>
+    <circle cx="28" cy="28" r="${r}" fill="none" stroke="${col}" stroke-width="5" stroke-linecap="round" stroke-dasharray="${(c * pct / 100).toFixed(1)} ${c.toFixed(1)}" transform="rotate(-90 28 28)" class="ring-arc" style="--c:${c.toFixed(1)}"/></svg>
+    <div class="ring-t"><b class="num">${pct}%</b><span>${when}</span></div></div>`;
+}
 function heroCard() {
   const s = db.settings, o = odoSorted(), lastO = o[o.length - 1];
   const lastC = [...db.charges].sort(byDate).pop();
   const due = deadlines().find(x => x.date), dd = due ? Math.round(days(due.date) - days(today())) : null;
   const anim = !heroCard.done; heroCard.done = true; // animazione d'ingresso solo all'apertura
-  const photo = getPhoto();
+  const photo = getPhoto(), p3 = periodStats(3);
+  const evPct = p3 && p3.km ? Math.min(100, p3.kwh / s.evCons * 100 / p3.km * 100) : null;
   return `<div class="hero${anim ? ' anim' : ''}${photo ? ' has-photo' : ''}">${photo ? `<img class="photo" src="${photo}" alt="La mia auto">` : carSvg(s.carColor)}
+    ${lastC ? batteryRing(lastC.end, dShort(lastC.date)) : ''}
     ${s.carSub ? `<div class="sub">${esc(s.carSub)}</div>` : ''}
     <div class="stats num">
       <div><b>${lastO ? F0.format(lastO.km) : '–'}</b><span>km${lastO ? ' al ' + dShort(lastO.date) : ''}</span></div>
-      <div><b>${lastC ? lastC.end + '%' : '–'}</b><span>${lastC ? 'carica ' + dShort(lastC.date) : 'ultima carica'}</span></div>
+      <div><b>${evPct != null ? F0.format(evPct) + '%' : '–'}</b><span>km in elettrico</span></div>
       <div><b>${dd != null ? dd + ' gg' : '–'}</b><span>${due ? esc(due.label.toLowerCase()) : 'scadenze'}</span></div>
     </div></div>`;
 }
 
 function renderHome() {
-  const k = mk(today()), m = monthStats(k);
-  const kmTile = m.km != null ? tile('Km', F0.format(m.km), m.kmPartial ? ' fin qui' : '')
+  const k = mk(today()), m = monthStats(k), mc = monthCompare(), L = mc.label;
+  const kmTile = m.km != null ? tile('Km', F0.format(m.km), m.kmPartial ? ' fin qui' : '', null, delta(mc.cur.km, mc.prev.km, null, L))
     : `<button class="tile" onclick="editOdo()" style="text-align:left"><div class="l">Km</div><div class="n" style="color:var(--blue);font-size:17px;margin-top:10px">+ Aggiungi lettura</div></button>`;
   let h = heroCard() + `<div class="quick">
       <button onclick="editCharge()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg>Ricarica</button>
@@ -507,9 +588,9 @@ function renderHome() {
     </div>
     <h2>${mLabel(k)}</h2><div class="tiles">
     ${kmTile}
-    ${tile('Spesa energia', F2.format(m.el + m.fuelEur), '€')}
-    ${tile('Elettricità', F2.format(m.el), '€', '--el')}
-    ${tile('Benzina', F2.format(m.fuelEur), '€', '--fuel')}
+    ${tile('Spesa energia', F2.format(m.el + m.fuelEur), '€', null, delta(mc.cur.el + mc.cur.fuel, mc.prev.el + mc.prev.fuel, true, L))}
+    ${tile('Elettricità', F2.format(m.el), '€', '--el', delta(mc.cur.el, mc.prev.el, true, L))}
+    ${tile('Benzina', F2.format(m.fuelEur), '€', '--fuel', delta(mc.cur.fuel, mc.prev.fuel, true, L))}
   </div>`;
 
   // Scadenze
@@ -524,9 +605,13 @@ function renderHome() {
     }).join('') + `</div>`;
   }
 
+  // Consumi medi
+  h += consumiSection();
+
   // Grafico spesa mensile
   const months = allMonths().slice(-6);
   h += `<h2>Spesa energia mensile</h2>` + spendChart(months);
+  h += yearDonut();
   h += `<h2>Andamento costo per km</h2>` + trendChart();
 
   // Statistiche
@@ -560,7 +645,11 @@ function renderHome() {
 
   document.getElementById('home').innerHTML = h;
   bindSeg('seg-range', v => { state.range = v; render(); });
+  document.querySelectorAll('#donut [data-c]').forEach(b => b.onclick = () => { state.donutSel = state.donutSel === +b.dataset.c ? null : +b.dataset.c; render(); });
+  bindSeg('seg-year', v => { state.year = v; state.donutSel = null; render(); });
   bindChart('trend', i => { state.trendSel = state.trendSel === i ? null : i; render(); });
+  bindChart('cons-l', i => { state.consLSel = state.consLSel === i ? null : i; render(); });
+  bindChart('cons-k', i => { state.consKSel = state.consKSel === i ? null : i; render(); });
   bindChart('spend', i => { state.chartSel = state.chartSel === i ? null : i; render(); });
 }
 
@@ -598,30 +687,104 @@ function spendChart(months) {
   return `<div class="chart" id="spend"><div class="head">${head}</div><svg class="plot" viewBox="0 0 ${W} ${H}" role="img" aria-label="Spesa mensile elettricità e benzina">${g}</svg>
     <div class="legend"><span><i class="dot" style="background:var(--el)"></i>Elettricità</span><span><i class="dot" style="background:var(--fuel)"></i>Benzina</span></div></div>`;
 }
-/* Linea del €/100 km per i mesi completi (ultimi 12) */
-function trendChart() {
-  const data = allMonths().map(monthStats).filter(s => s.km > 0 && !s.kmPartial).slice(-12)
-    .map(s => ({ k: s.k, v: (s.el + s.fuelEur) / s.km * 100, el: s.el / s.km * 100 }));
+/* Ciambella della spesa dell'anno. Ordine fisso dei colori (validato per daltonismo sugli spicchi adiacenti) */
+function yearDonut() {
+  const years = [...new Set([...db.charges, ...db.fuel, ...db.maint, ...db.fees].map(x => x.date.slice(0, 4)))].sort();
+  if (!years.length) return '';
+  const Y = years.includes(state.year) ? state.year : years[years.length - 1];
+  const inY = x => x.date.slice(0, 4) === Y, sum = (a, f) => a.filter(inY).reduce((t, x) => t + f(x), 0);
+  const cats = [
+    { n: 'Elettricità', c: 'var(--el)', v: sum(db.charges, chargeCost) },
+    { n: 'Manutenzione', c: 'var(--maint)', v: sum(db.maint, m => m.cost || 0) },
+    { n: 'Benzina', c: 'var(--fuel)', v: sum(db.fuel, f => f.total) },
+    { n: 'Assicurazione e bollo', c: 'var(--fees)', v: sum(db.fees, f => f.cost || 0) },
+  ];
+  const tot = cats.reduce((t, c) => t + c.v, 0);
+  if (!tot) return '';
+  const R = 70, r = 46, cx = 80, cy = 80, sel = state.donutSel;
+  let a = -Math.PI / 2, g = '';
+  const pt = (rad, ang) => `${(cx + rad * Math.cos(ang)).toFixed(2)},${(cy + rad * Math.sin(ang)).toFixed(2)}`;
+  cats.forEach((c, i) => {
+    if (!c.v) return;
+    const sw = c.v / tot * Math.PI * 2, b = a + sw, big = sw > Math.PI ? 1 : 0, out = sel === i ? 4 : 0;
+    const d = sw >= Math.PI * 2 - 1e-6
+      ? `M${pt(R, 0)}A${R},${R} 0 1 1 ${pt(R, Math.PI)}A${R},${R} 0 1 1 ${pt(R, 0)}M${pt(r, 0)}A${r},${r} 0 1 0 ${pt(r, Math.PI)}A${r},${r} 0 1 0 ${pt(r, 0)}Z`
+      : `M${pt(R + out, a)}A${R + out},${R + out} 0 ${big} 1 ${pt(R + out, b)}L${pt(r, b)}A${r},${r} 0 ${big} 0 ${pt(r, a)}Z`;
+    g += `<path d="${d}" fill="${c.c}" stroke="var(--card)" stroke-width="2" stroke-linejoin="round" ${sel != null && sel !== i ? 'opacity=".35"' : ''} data-c="${i}" style="cursor:pointer"/>`;
+    a = b;
+  });
+  const s = sel != null ? cats[sel] : null;
+  g += `<text x="${cx}" y="${cy - 4}" text-anchor="middle" style="font-size:11px;fill:var(--ink2)">${s ? esc(s.n.split(' ')[0]) : 'Totale ' + Y}</text>
+    <text x="${cx}" y="${cy + 14}" text-anchor="middle" class="num" style="font-size:17px;font-weight:600;fill:var(--ink)">${F0.format(s ? s.v : tot)} €</text>`;
+  const leg = cats.map((c, i) => `<button data-c="${i}" class="${sel != null && sel !== i ? 'dim' : ''}"><i class="dot" style="background:${c.c}"></i><span class="nm">${c.n}<br><span class="vl">${F0.format(c.v)} € · ${F0.format(c.v / tot * 100)}%</span></span></button>`).join('');
+  const seg = years.length > 1 ? `<div class="segc" id="seg-year" style="margin-bottom:10px">${years.map(y => `<button data-v="${y}" class="${y === Y ? 'on' : ''}">${y}</button>`).join('')}</div>` : '';
+  return `<h2>Spesa totale ${Y}</h2>${seg}<div class="chart" id="donut"><div class="donut-wrap"><svg viewBox="0 0 160 160" role="img" aria-label="Spesa ${Y} per categoria">${g}</svg><div class="donut-leg">${leg}</div></div></div>
+    <p class="note">Tutto quello che hai speso per l'auto nell'anno, per categoria. Tocca una voce per evidenziarla.</p>`;
+}
+/* Grafico a linea generico (una sola serie, tocca un punto per il dettaglio) */
+function lineChart({ id, data, sel, color, fmt, unit, avgLabel, aria, detail, area, showLast }) {
   if (data.length < 2) return `<div class="group"><div class="empty">Servono almeno due mesi completi di letture km.</div></div>`;
-  const W = 340, H = 150, pl = 30, pb = 20, pt = 10, iw = W - pl - 10, ih = H - pb - pt;
-  const max = Math.max(...data.map(d => d.v)), step = niceStep(max / 3), top = Math.ceil(max / step) * step;
+  const W = 340, H = 140, pl = 30, pb = 20, pt = 10, iw = W - pl - 10, ih = H - pb - pt;
+  const max = Math.max(...data.map(d => d.v)), step = niceStep(max / 3 || 1), top = Math.ceil(max / step) * step || 1;
   const x = i => pl + iw * i / (data.length - 1), y = v => pt + ih - v / top * ih;
   let g = '';
-  for (let v = 0; v <= top + 1e-9; v += step) g += `<line class="grid" x1="${pl}" x2="${W - 4}" y1="${y(v)}" y2="${y(v)}"/><text x="${pl - 6}" y="${y(v) + 4}" text-anchor="end">${F0.format(v)}</text>`;
-  const sel = state.trendSel;
+  for (let v = 0; v <= top + 1e-9; v += step) g += `<line class="grid" x1="${pl}" x2="${W - 4}" y1="${y(v)}" y2="${y(v)}"/><text x="${pl - 6}" y="${y(v) + 4}" text-anchor="end">${step < 1 ? F1.format(v) : F0.format(v)}</text>`;
   if (sel != null && data[sel]) g += `<line x1="${x(sel)}" x2="${x(sel)}" y1="${pt}" y2="${pt + ih}" stroke="var(--ink3)" stroke-width="1"/>`;
-  g += `<path d="${data.map((d, i) => (i ? 'L' : 'M') + x(i).toFixed(1) + ',' + y(d.v).toFixed(1)).join('')}" fill="none" stroke="var(--ink)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
+  const line = data.map((d, i) => (i ? 'L' : 'M') + x(i).toFixed(1) + ',' + y(d.v).toFixed(1)).join('');
+  if (area) g += `<path d="${line}L${x(data.length - 1)},${pt + ih}L${x(0)},${pt + ih}Z" fill="${color}" opacity=".12"/>`;
+  g += `<path d="${line}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
   data.forEach((d, i) => {
-    g += `<circle cx="${x(i)}" cy="${y(d.v)}" r="${sel === i ? 5 : 3.5}" fill="var(--ink)" stroke="var(--card)" stroke-width="2"/>`;
+    g += `<circle cx="${x(i)}" cy="${y(d.v)}" r="${sel === i ? 5 : 3.5}" fill="${color}" stroke="var(--card)" stroke-width="2"/>`;
     if (data.length <= 8 || i % 2 === (data.length - 1) % 2) g += `<text x="${x(i)}" y="${H - 4}" text-anchor="middle">${mShort(d.k)}</text>`;
     const w = iw / (data.length - 1);
     g += `<rect class="hit" data-i="${i}" x="${x(i) - w / 2}" y="0" width="${w}" height="${H}"/>`;
   });
-  const avg = data.reduce((t, d) => t + d.v, 0) / data.length, s = sel != null ? data[sel] : null;
-  const head = s ? `<div><div class="sub">${mLabel(s.k)}</div><div class="big num">${F2.format(s.v)} €/100 km</div></div><div class="sub num" style="text-align:right">di cui elettricità<br>${F2.format(s.el)} €/100 km</div>`
-    : `<div><div class="sub">Media mensile</div><div class="big num">${F2.format(avg)} €/100 km</div></div><div class="sub">Tocca un mese</div>`;
-  return `<div class="chart" id="trend"><div class="head">${head}</div><svg class="plot" viewBox="0 0 ${W} ${H}" role="img" aria-label="Costo energia per 100 km, mese per mese">${g}</svg></div>
-    <p class="note">Elettricità + benzina acquistate nel mese, diviso i km del mese. Un pieno fatto a fine mese alza quel mese e abbassa il successivo.</p>`;
+  const avg = data.reduce((t, d) => t + d.v, 0) / data.length, s = sel != null ? data[sel] : null, lastD = data[data.length - 1];
+  const head = s ? `<div><div class="sub">${mLabel(s.k)}</div><div class="big num">${fmt(s.v)} ${unit}</div></div>${detail ? `<div class="sub num" style="text-align:right">${detail(s)}</div>` : ''}`
+    : `<div><div class="sub">${avgLabel}${showLast ? ' · ' + mShort(lastD.k) : ''}</div><div class="big num">${fmt(showLast ? lastD.v : avg)} ${unit}</div></div><div class="sub">Tocca un mese</div>`;
+  return `<div class="chart" id="${id}"><div class="head">${head}</div><svg class="plot" viewBox="0 0 ${W} ${H}" role="img" aria-label="${aria}">${g}</svg></div>`;
+}
+/* €/100 km per i mesi completi (ultimi 12) */
+function trendChart() {
+  const data = allMonths().map(monthStats).filter(s => s.km > 0 && !s.kmPartial).slice(-12)
+    .map(s => ({ k: s.k, v: (s.el + s.fuelEur) / s.km * 100, el: s.el / s.km * 100 }));
+  return lineChart({ id: 'trend', data, sel: state.trendSel, color: 'var(--ink)', fmt: v => F2.format(v), unit: '€/100 km', avgLabel: 'Media mensile',
+    aria: 'Costo energia per 100 km, mese per mese', detail: s => `di cui elettricità<br>${F2.format(s.el)} €/100 km` })
+    + `<p class="note">Elettricità + benzina acquistate nel mese, diviso i km del mese. Un pieno fatto a fine mese alza quel mese e abbassa il successivo.</p>`;
+}
+/* Consumi medi: media mobile su 3 mesi per smussare l'effetto dei rifornimenti */
+function consMonths() {
+  const ms = allMonths().map(monthStats), out = [];
+  ms.forEach((s, i) => {
+    if (!(s.km > 0) || s.kmPartial) return;
+    const w = ms.slice(Math.max(0, i - 2), i + 1).filter(x => x.km > 0 && !x.kmPartial);
+    const km = w.reduce((t, x) => t + x.km, 0);
+    out.push({ k: s.k, l: w.reduce((t, x) => t + x.fuelL, 0) / km * 100, kwh: w.reduce((t, x) => t + x.kwhB, 0) / km * 100, n: w.length });
+  });
+  return out.slice(-12);
+}
+function consumiSection() {
+  const p = periodStats(3), s = db.settings;
+  if (!p) return '';
+  const k100 = p.km / 100, lkm = p.fl / k100, kwhkm = p.kwh / k100;
+  const evKm = Math.min(p.km, p.kwh / s.evCons * 100), iv = fuelIntervals(), last = iv[iv.length - 1];
+  const tank = lkm > 0 ? s.tankL / lkm * 100 : null;
+  const cm = consMonths();
+  let h = `<h2>Consumi medi<span>ultimi 3 mesi</span></h2><div class="tiles">
+    ${tile('Benzina', F1.format(lkm), 'L/100 km', '--fuel')}
+    ${tile('Elettricità', F1.format(kwhkm), 'kWh/100 km', '--el')}
+    ${tile('Km in elettrico', F0.format(evKm / p.km * 100), '% stimato')}
+    ${last ? tile('Consumo reale', F1.format(last.l / last.km * 100), 'L/100 km') : tile('Un pieno dura', tank ? F0.format(tank) : '–', 'km')}
+  </div>
+  <p class="note">Benzina e kWh caricati nel periodo, divisi per tutti i km percorsi (elettrici + benzina). ${tank ? `Con ${F0.format(s.tankL)} L e queste ricariche un pieno ti dura circa ${F0.format(tank)} km, contro i ${F0.format(s.rangeMax)} km che l'auto indica col serbatoio pieno (stima in ibrido, senza ricariche).` : ''} I km in elettrico sono stimati con ${F0.format(s.evCons)} kWh/100 km.</p>`;
+  if (cm.length >= 2) {
+    h += `<div style="height:10px"></div>` + lineChart({ id: 'cons-l', data: cm.map(x => ({ k: x.k, v: x.l })), sel: state.consLSel, color: 'var(--fuel)', area: true, showLast: true,
+      fmt: v => F1.format(v), unit: 'L/100 km', avgLabel: 'Benzina · media mobile 3 mesi', aria: 'Consumo di benzina, media mobile 3 mesi' });
+    h += `<div style="height:10px"></div>` + lineChart({ id: 'cons-k', data: cm.map(x => ({ k: x.k, v: x.kwh })), sel: state.consKSel, color: 'var(--el)', area: true, showLast: true,
+      fmt: v => F1.format(v), unit: 'kWh/100 km', avgLabel: 'Elettricità · media mobile 3 mesi', aria: 'Consumo elettrico, media mobile 3 mesi' });
+    h += `<p class="note">Ogni punto è la media dei 3 mesi fino a quello indicato: così un pieno fatto a fine mese non crea picchi.</p>`;
+  }
+  return h;
 }
 function roundTop(x, y, w, h, fill) {
   const r = Math.min(4, h, w / 2);
@@ -647,6 +810,7 @@ function renderCharge() {
   const cur = tariffAt(today());
   let h = `<h2>Tariffa casa</h2><div class="group"><button class="row" onclick="openTariffs()"><div class="main"><div class="t">Prezzo in bolletta</div><div class="s">Inseriscilo solo quando cambia</div></div><div class="v num">${cur != null ? F5(cur) + ' €/kWh' : 'da impostare'}</div><span class="chev">›</span></button></div>`;
   const list = [...db.charges].sort(byDate).reverse();
+  if (list.length) h += `<h2>Calendario ricariche<span>ultime 18 settimane</span></h2>` + chargeCalendar();
   if (!list.length) h += `<h2>&nbsp;</h2><div class="group"><div class="empty">Nessuna ricarica. Tocca + per aggiungerne una.</div></div>`;
   else if (state.chargeView === 'list') {
     const groups = groupBy(list, c => mk(c.date));
@@ -674,6 +838,38 @@ function renderCharge() {
     h += `<p class="note">I kWh dalla rete di casa sono quelli della bolletta: kWh caricati + ${F0.format(db.settings.loss)}% di dispersione (modificabile nelle impostazioni).</p>`;
   }
   document.getElementById('charge').innerHTML = h;
+  bindChart('cal', i => { state.calSel = state.calSel === i ? null : i; render(); });
+}
+/* Calendario stile "Attività": una colonna per settimana, un quadratino per giorno, colore = kWh caricati */
+function chargeCalendar() {
+  const W = 18, t = today(), td = days(t), dow = (new Date(td * 864e5).getUTCDay() + 6) % 7; // 0 = lunedì
+  const start = td - dow - (W - 1) * 7, by = {};
+  for (const c of db.charges) { const d = days(c.date); if (d >= start && d <= td) by[d] = (by[d] || { kwh: 0, n: 0 }), by[d].kwh += kwhBatt(c), by[d].n++; }
+  const lvl = k => !k ? 0 : k < 4 ? 1 : k < 8 ? 2 : k < 12 ? 3 : 4, op = [0, .3, .55, .8, 1];
+  const cs = 16, gp = 3, pl = 16, pt = 14, Wd = pl + W * (cs + gp), Hd = pt + 7 * (cs + gp);
+  let g = '', lastM = -1, lastW = -9, cells = [];
+  ['L', '', 'M', '', 'V', '', 'D'].forEach((l, i) => l && (g += `<text x="0" y="${pt + i * (cs + gp) + 12}">${l}</text>`));
+  for (let w = 0; w < W; w++) {
+    // etichetta del mese sulla colonna che contiene il giorno 1 (o sulla prima, se il mese successivo non è vicino)
+    const d0 = start + w * 7, m = +fromDays(d0 + 6).slice(5, 7), nextM = +fromDays(d0 + 13).slice(5, 7);
+    if (m !== lastM) {
+      lastM = m;
+      if (w - lastW >= 3 && !(w === 0 && nextM !== m) && w < W - 1) { g += `<text x="${pl + w * (cs + gp)}" y="10">${MESI[m - 1]}</text>`; lastW = w; }
+    }
+    for (let i = 0; i < 7; i++) {
+      const d = d0 + i; if (d > td) continue;
+      const v = by[d], idx = cells.length, x = pl + w * (cs + gp), y = pt + i * (cs + gp);
+      cells.push({ d, v });
+      g += `<rect class="d" rx="3.5" x="${x}" y="${y}" width="${cs}" height="${cs}" fill="${v ? 'var(--el)' : 'var(--fill)'}" ${v ? `fill-opacity="${op[lvl(v.kwh)]}"` : ''} ${state.calSel === idx ? 'stroke="var(--ink)" stroke-width="2"' : ''}/>`;
+      g += `<rect class="hit" data-i="${idx}" x="${x - 1}" y="${y - 1}" width="${cs + gp}" height="${cs + gp}"/>`;
+    }
+  }
+  const sel = state.calSel != null ? cells[state.calSel] : null;
+  const inR = cells.filter(c => c.v), tot = inR.reduce((s, c) => s + c.v.kwh, 0), n = inR.reduce((s, c) => s + c.v.n, 0);
+  const head = sel ? `<div><div class="sub">${dLabel(fromDays(sel.d))}</div><div class="big num">${sel.v ? F1.format(sel.v.kwh) + ' kWh' : 'Nessuna ricarica'}</div></div>${sel.v && sel.v.n > 1 ? `<div class="sub">${sel.v.n} ricariche</div>` : ''}`
+    : `<div><div class="sub">${n} ricariche in ${inR.length} giorni</div><div class="big num">${F0.format(tot)} kWh</div></div><div class="sub">Tocca un giorno</div>`;
+  return `<div class="chart" id="cal"><div class="head">${head}</div><svg class="plot cal" viewBox="0 0 ${Wd} ${Hd}" role="img" aria-label="Calendario delle ricariche">${g}</svg>
+    <div class="cal-legend">meno <i style="background:var(--fill)"></i>${op.slice(1).map(o => `<i style="background:var(--el);opacity:${o}"></i>`).join('')} più kWh</div></div>`;
 }
 const kv = (k, v) => `<div class="row"><div class="main">${k}</div><div class="v num">${v}</div></div>`;
 function groupBy(arr, fn) { const m = new Map(); for (const x of arr) { const k = fn(x); if (!m.has(k)) m.set(k, []); m.get(k).push(x); } return m; }
@@ -683,16 +879,24 @@ function renderFuel() {
   setSeg('seg-fuel', state.fuelView);
   const list = [...db.fuel].sort(byDate).reverse();
   let h = '';
-  // Consumo reale pieno-pieno
-  const ff = fullToFull();
+  // Serbatoio stimato
+  const tk = tankNow(), T = db.settings.tankL;
+  if (tk) {
+    h += `<h2>Serbatoio stimato<span>al ${dShort(tk.at)}</span></h2><div class="tile">
+      <div style="display:flex;justify-content:space-between;align-items:baseline"><div class="n num">${F0.format(tk.l)}<small>L su ${F0.format(T)}</small></div><div class="num" style="color:var(--ink2);font-size:15px">${F0.format(tk.pct)}%</div></div>
+      <div class="gauge"><i style="width:${tk.pct}%"></i>${[25, 50, 75].map(v => `<b style="left:${v}%"></b>`).join('')}</div>
+      <div class="s">Stimato dall'ultimo rifornimento con livello noto, meno i km fatti al consumo recente (${F1.format(tk.rate * 100)} L/100 km). Aggiorna i km per tenerlo preciso.</div></div>`;
+  }
+  // Consumo reale tra rifornimenti con livello noto
+  const ff = fuelIntervals();
   if (ff.length) {
-    const last = ff[ff.length - 1], tl = ff.reduce((t, x) => t + x.l, 0), tk = ff.reduce((t, x) => t + x.km, 0);
-    h += `<h2>Consumo reale (pieno-pieno)</h2><div class="tiles">
+    const last = ff[ff.length - 1], tl = ff.reduce((t, x) => t + x.l, 0), tkm = ff.reduce((t, x) => t + x.km, 0);
+    h += `<h2>Consumo reale</h2><div class="tiles">
       ${tile('Ultimo intervallo', F1.format(last.l / last.km * 100), 'L/100 km', '--fuel')}
-      ${tile('Media pieni', F1.format(tl / tk * 100), 'L/100 km')}</div>
-      <p class="note">Ultimo intervallo: ${F0.format(last.km)} km dal ${dShort(last.from)} al ${dShort(last.to)}${last.est ? ' (km stimati dalle letture)' : ''}. Sono litri sui km totali, quindi includono i km fatti in elettrico.</p>`;
+      ${tile('Media', F1.format(tl / tkm * 100), 'L/100 km')}</div>
+      <p class="note">Ultimo intervallo: ${F1.format(last.l)} L in ${F0.format(last.km)} km, dal ${dShort(last.from)} al ${dShort(last.to)}${last.est ? ' (km stimati dalle letture)' : ''}. Sono litri sui km totali, quindi includono i km fatti in elettrico.</p>`;
   } else if (list.length) {
-    h += `<p class="note" style="margin-top:12px">Quando fai il pieno completo attiva "Pieno" nel rifornimento: dal secondo pieno l'app calcola il consumo reale.</p>`;
+    h += `<p class="note" style="margin-top:12px">Per il consumo reale: quando rifornisci attiva "Pieno completo", oppure indica il livello dell'indicatore prima di rifornire. Dal secondo rifornimento così l'app calcola i litri davvero consumati.</p>`;
   }
   if (!list.length) h = `<h2>&nbsp;</h2><div class="group"><div class="empty">Nessun rifornimento. Tocca + per aggiungerne uno.</div></div>`;
   else if (state.fuelView === 'list') {
@@ -850,17 +1054,29 @@ function editFuel(id) {
     <div class="group">${fld('Data', 'f-date', f.date, { type: 'date' })}${fld('Totale', 'f-tot', fmtIn(f.total, 2), { u: '€', ph: '0,00' })}
     ${fld('Prezzo al litro', 'f-ppl', fmtIn(f.ppl, 3), { u: '€/L', ph: lastPpl ? fmtIn(lastPpl.ppl, 3) : '1,799' })}
     ${fld('Contachilometri', 'f-km', f.km, { u: 'km', ph: kmPh() })}
-    ${switchFld('Pieno completo', 'f-full', f.full)}</div>
+    ${switchFld('Pieno completo', 'f-full', f.full)}
+    <div id="f-lvlbox">${fld('Livello prima', 'f-lvl', f.level, { u: '%', ph: 'facoltativo' })}</div></div>
     <div class="preview num" id="f-prev"></div>
-    <p class="note">Attiva "Pieno completo" quando riempi il serbatoio fino allo scatto: tra due pieni l'app calcola il consumo reale. Con i km del contachilometri il calcolo è esatto.</p>`,
+    <p class="note">Attiva "Pieno completo" quando riempi il serbatoio fino allo scatto. Se non fai il pieno puoi indicare il livello dell'indicatore prima di rifornire (es. 25% = un quarto). Con uno dei due l'app calcola il consumo reale e la benzina rimasta nel serbatoio da ${F0.format(db.settings.tankL)} L.</p>`,
     () => {
-      const o = { id: f.id, date: val('f-date'), total: num(val('f-tot')), ppl: num(val('f-ppl')), km: num(val('f-km')), full: document.getElementById('f-full').checked };
+      const full = document.getElementById('f-full').checked;
+      const o = { id: f.id, date: val('f-date'), total: num(val('f-tot')), ppl: num(val('f-ppl')), km: num(val('f-km')), full, level: full ? null : num(val('f-lvl')) };
       if (!need(o.date && o.total > 0 && o.ppl > 0, 'Inserisci totale e prezzo al litro')) return false;
+      if (!need(o.level == null || (o.level >= 0 && o.level <= 100), 'Il livello va da 0 a 100%')) return false;
+      const T = db.settings.tankL, L = o.total / o.ppl;
+      if (L > T && !confirm(`${F1.format(L)} litri sono più della capienza del serbatoio (${F0.format(T)} L). Salvare comunque?`)) return false;
+      if (o.level != null && o.level / 100 * T + L > T + 2 && !confirm(`Con il ${F0.format(o.level)}% già nel serbatoio, ${F1.format(L)} litri non ci stanno (${F0.format(T)} L). Salvare comunque?`)) return false;
       if (!kmOk(o.date, o.km, f.id)) return false;
       upsert(db.fuel, o); save(); toast('Rifornimento salvato');
     }, id && (() => remove(db.fuel, id)));
-  const upd = () => { const t = num(val('f-tot')), p = num(val('f-ppl')); document.getElementById('f-prev').innerHTML = t > 0 && p > 0 ? `<b>${F2.format(t / p)} litri</b>` : ''; };
-  ['f-tot', 'f-ppl'].forEach(i => document.getElementById(i).addEventListener('input', upd)); upd();
+  const upd = () => {
+    const t = num(val('f-tot')), p = num(val('f-ppl')), full = document.getElementById('f-full').checked, T = db.settings.tankL;
+    document.getElementById('f-lvlbox').style.display = full ? 'none' : '';
+    let s = t > 0 && p > 0 ? `<b>${F2.format(t / p)} litri</b>` : '';
+    if (s && full) s += ` · prima ne avevi circa ${F0.format(Math.max(0, T - t / p))} L (${F0.format(Math.max(0, T - t / p) / T * 100)}%)`;
+    document.getElementById('f-prev').innerHTML = s;
+  };
+  ['f-tot', 'f-ppl', 'f-full'].forEach(i => document.getElementById(i).addEventListener(i === 'f-full' ? 'change' : 'input', upd)); upd();
 }
 
 function editOdo(id) {
@@ -933,9 +1149,12 @@ function openSettings() {
     <p class="note">Scegli una foto dalla Galleria o da File: viene mostrata intera (ritagliala prima su Foto) e resta solo su questo iPhone, non viene pubblicata. Per avere solo l'auto senza sfondo: in Foto tieni premuto sull'auto, scegli Condividi → Salva su File, e usa quel file.</p>
     <h2>Ricarica</h2><div class="group">${fld('Capacità batteria', 's-cap', fmtIn(s.capacity, 2), { u: 'kWh' })}${fld('Dispersione ricarica casa', 's-loss', fmtIn(s.loss, 1), { u: '%' })}</div>
     <p class="note">La dispersione si applica solo alle ricariche di casa: rappresenta l'energia persa tra contatore e batteria (caricatore di bordo, cavo, prolunga).</p>
-    <h2>Calcoli</h2><div class="group">${fld('Consumo solo benzina', 's-ref', fmtIn(s.petrolRef, 1), { u: 'L/100 km' })}
+    <h2>Benzina</h2><div class="group">${fld('Capienza serbatoio', 's-tank', s.tankL, { u: 'L' })}${fld('Autonomia a pieno (schermo)', 's-range', s.rangeMax, { u: 'km' })}
+      ${fld('Consumo solo benzina', 's-ref', fmtIn(s.petrolRef, 1), { u: 'L/100 km' })}</div>
+    <p class="note">"Consumo solo benzina" serve a stimare il risparmio: è quanto consumerebbe l'auto in ibrido senza mai ricaricarla. L'autonomia che l'auto indica a serbatoio pieno corrisponde a ${F1.format(s.tankL / s.rangeMax * 100)} L/100 km (${F0.format(s.tankL)} L ÷ ${F0.format(s.rangeMax)} km); i tuoi dati di marzo-aprile, quasi senza ricariche, danno circa 6,1 L/100 km.</p>
+    <h2>Altri calcoli</h2><div class="group">${fld('Consumo in elettrico', 's-ev', fmtIn(s.evCons, 1), { u: 'kWh/100 km' })}
       ${fld('Tagliando ogni', 's-skm', s.serviceKm, { u: 'km' })}${fld('oppure ogni', 's-smo', s.serviceMonths, { u: 'mesi' })}</div>
-    <p class="note">"Consumo solo benzina" serve a stimare il risparmio: è quanto consumerebbe l'auto in ibrido senza mai ricaricarla (circa 5,5–6,5 L/100 km per questo modello). Controlla sul libretto di manutenzione l'intervallo dei tagliandi.</p>
+    <p class="note">Il consumo in elettrico serve solo a stimare la quota di km fatti a batteria (18,3 kWh e circa 90 km di autonomia elettrica ≈ 20 kWh/100 km). Controlla sul libretto di manutenzione l'intervallo dei tagliandi.</p>
     <h2>Backup</h2><div class="group">
       <button class="row btn" id="s-exp">Esporta backup</button>
       <button class="row btn" id="s-imp">Importa backup</button></div>
@@ -943,9 +1162,10 @@ function openSettings() {
     <div class="group" style="margin-top:28px"><button class="row danger" id="s-wipe">Cancella tutti i dati</button></div>`,
     () => {
       const cap = num(val('s-cap')), loss = num(val('s-loss')), ref = num(val('s-ref')), skm = num(val('s-skm')), smo = num(val('s-smo'));
-      if (!need(cap > 0 && loss >= 0 && loss < 100 && ref > 0 && skm > 0 && smo > 0, 'Valori non validi')) return false;
+      const tank = num(val('s-tank')), range = num(val('s-range')), ev = num(val('s-ev'));
+      if (!need(cap > 0 && loss >= 0 && loss < 100 && ref > 0 && skm > 0 && smo > 0 && tank > 0 && range > 0 && ev > 0, 'Valori non validi')) return false;
       db.settings = { carName: val('s-name').trim() || 'Jaecoo 7', carSub: val('s-sub').trim(), carColor: val('s-color'), regDate: val('s-reg'),
-        capacity: cap, loss, petrolRef: ref, serviceKm: skm, serviceMonths: smo }; save(); toast('Impostazioni salvate');
+        capacity: cap, loss, petrolRef: ref, serviceKm: skm, serviceMonths: smo, tankL: tank, rangeMax: range, evCons: ev }; save(); toast('Impostazioni salvate');
     });
   document.getElementById('s-photo').onclick = () => document.getElementById('photoIn').click();
   const np = document.getElementById('s-nophoto');

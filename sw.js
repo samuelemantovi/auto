@@ -1,5 +1,5 @@
 // Cache offline dell'app (i dati restano nel dispositivo, in localStorage)
-const CACHE = 'jaecoo7-v2';
+const CACHE = 'jaecoo7-v4';
 const FILES = ['./', './index.html', './manifest.webmanifest', './icon-180.png', './icon-512.png'];
 
 self.addEventListener('install', e => {
