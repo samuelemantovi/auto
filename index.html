@@ -92,6 +92,10 @@ button.row:active{background:var(--fill)}
 .tile.wide{grid-column:1/-1}
 .tile .s{font-size:13px;color:var(--ink2);margin-top:4px;line-height:1.35}
 .tile.save .n{color:var(--green)}
+.combo{display:flex;gap:2px;height:8px;border-radius:4px;overflow:hidden;margin:10px 0 6px;background:var(--fill)}
+.combo i{display:block;height:100%}
+.tile .s .dot{width:7px;height:7px;vertical-align:1px}
+.tile .s b{color:var(--ink);font-weight:600}
 .gauge{position:relative;height:10px;border-radius:5px;background:var(--fill);margin:10px 0 4px;overflow:hidden}
 .gauge i{position:absolute;left:0;top:0;bottom:0;border-radius:5px;background:var(--fuel)}
 .gauge b{position:absolute;top:0;bottom:0;width:2px;margin-left:-1px;background:var(--card)}
@@ -264,7 +268,7 @@ const DEFAULT = {
   tariffs: [], charges: [], fuel: [], odo: [], maint: [], fees: []
 };
 let db = load();
-const state = { page: 'home', chargeView: 'list', fuelView: 'list', costTab: 'maint', range: '6', chartSel: null, kmSel: null, trendSel: null, consLSel: null, consKSel: null, calSel: null, donutSel: null, year: null };
+const state = { page: 'home', chargeView: 'list', fuelView: 'list', costTab: 'maint', range: '6', chartSel: null, kmSel: null, trendSel: null, consLSel: null, consKSel: null, consCSel: null, calSel: null, donutSel: null, year: null };
 
 function load() {
   try {
@@ -370,7 +374,7 @@ function periodStats(months) {
   if (!r || r.km <= 0) return null;
   const inW = x => x.date > start && x.date <= last;
   const ch = db.charges.filter(inW), fu = db.fuel.filter(inW);
-  const el = ch.reduce((t, c) => t + chargeCost(c), 0), kwh = ch.reduce((t, c) => t + kwhBatt(c), 0);
+  const el = ch.reduce((t, c) => t + chargeCost(c), 0), kwh = ch.reduce((t, c) => t + kwhBatt(c), 0), kwhG = ch.reduce((t, c) => t + kwhGrid(c), 0);
   const fe = fu.reduce((t, f) => t + f.total, 0), fl = fu.reduce((t, f) => t + liters(f), 0);
   const mt = db.maint.filter(inW).reduce((t, m) => t + (m.cost || 0), 0);
   // assicurazione e bollo spalmati sui giorni di validità
@@ -384,7 +388,7 @@ function periodStats(months) {
   const lastF = [...db.fuel].sort(byDate).pop();
   const ppl = fl > 0 ? fe / fl : lastF ? lastF.ppl : null;
   const petrolOnly = ppl ? r.km * db.settings.petrolRef / 100 * ppl : null;
-  return { start, end: last, km: r.km, el, kwh, fe, fl, mt, fees, energy: el + fe, ppl, petrolOnly, saving: petrolOnly != null ? petrolOnly - (el + fe) : null };
+  return { start, end: last, km: r.km, el, kwh, kwhG, fe, fl, mt, fees, energy: el + fe, ppl, petrolOnly, saving: petrolOnly != null ? petrolOnly - (el + fe) : null };
 }
 
 // Consumo reale tra rifornimenti. Serve sapere quanta benzina c'era nel serbatoio:
@@ -638,6 +642,7 @@ function renderHome() {
   document.querySelectorAll('#donut [data-c]').forEach(b => b.onclick = () => { state.donutSel = state.donutSel === +b.dataset.c ? null : +b.dataset.c; render(); });
   bindSeg('seg-year', v => { state.year = v; state.donutSel = null; render(); });
   bindChart('trend', i => { state.trendSel = state.trendSel === i ? null : i; render(); });
+  bindChart('cons-c', i => { state.consCSel = state.consCSel === i ? null : i; render(); });
   bindChart('cons-l', i => { state.consLSel = state.consLSel === i ? null : i; render(); });
   bindChart('cons-k', i => { state.consKSel = state.consKSel === i ? null : i; render(); });
   bindChart('spend', i => { state.chartSel = state.chartSel === i ? null : i; render(); });
@@ -748,11 +753,16 @@ function consMonths() {
   ms.forEach((s, i) => {
     if (!(s.km > 0) || s.kmPartial) return;
     const w = ms.slice(Math.max(0, i - 2), i + 1).filter(x => x.km > 0 && !x.kmPartial);
-    const km = w.reduce((t, x) => t + x.km, 0);
-    out.push({ k: s.k, l: w.reduce((t, x) => t + x.fuelL, 0) / km * 100, kwh: w.reduce((t, x) => t + x.kwhB, 0) / km * 100, n: w.length });
+    const sum = f => w.reduce((t, x) => t + f(x), 0);
+    const km = sum(x => x.km), fl = sum(x => x.fuelL), kwhG = sum(x => x.kwhHomeGrid + x.kwhPub);
+    out.push({ k: s.k, l: fl / km * 100, kwh: sum(x => x.kwhB) / km * 100, n: w.length,
+      elL: kwhG / KWH_PER_L / km * 100,          // elettricità convertita in litri (energia)
+      comb: (fl + kwhG / KWH_PER_L) / km * 100 }); // consumo combinato, litri equivalenti
   });
   return out.slice(-12);
 }
+// 1 litro di benzina ≈ 8,9 kWh di energia (stesso valore usato per l'MPGe: 33,7 kWh per gallone)
+const KWH_PER_L = 8.9;
 function consumiSection() {
   const p = periodStats(3), s = db.settings;
   if (!p) return '';
@@ -760,7 +770,12 @@ function consumiSection() {
   const evKm = Math.min(p.km, p.kwh / s.evCons * 100), iv = fuelIntervals(), last = iv[iv.length - 1];
   const tank = lkm > 0 ? s.tankL / lkm * 100 : null;
   const cm = consMonths();
+  const elL = p.kwhG / KWH_PER_L / k100, comb = lkm + elL;
   let h = `<h2>Consumi medi<span>ultimi 3 mesi</span></h2><div class="tiles">
+    <div class="tile wide"><div class="l">Consumo combinato (benzina + elettricità)</div>
+      <div class="n num">${F1.format(comb)}<small>L/100 km equivalenti</small></div>
+      <div class="combo"><i style="width:${comb ? lkm / comb * 100 : 0}%;background:var(--fuel)"></i><i style="width:${comb ? elL / comb * 100 : 0}%;background:var(--el)"></i></div>
+      <div class="s num"><span class="dot" style="background:var(--fuel)"></span> ${F1.format(lkm)} L di benzina + <span class="dot" style="background:var(--el)"></span> ${F1.format(elL)} L dall'elettricità (${F1.format(p.kwhG / k100)} kWh dalla rete ÷ ${F1.format(KWH_PER_L)})</div></div>
     ${tile('Benzina', F1.format(lkm), 'L/100 km', '--fuel')}
     ${tile('Elettricità', F1.format(kwhkm), 'kWh/100 km', '--el')}
     ${tile('Km in elettrico', F0.format(evKm / p.km * 100), '% stimato')}
@@ -768,6 +783,9 @@ function consumiSection() {
   </div>
   <p class="note">Benzina e kWh caricati nel periodo, divisi per tutti i km percorsi (elettrici + benzina). ${tank ? `Con ${F0.format(s.tankL)} L e queste ricariche un pieno ti dura circa ${F0.format(tank)} km, contro i ${F0.format(s.rangeMax)} km che l'auto indica col serbatoio pieno (stima in ibrido, senza ricariche).` : ''} I km in elettrico sono stimati con ${F0.format(s.evCons)} kWh/100 km.</p>`;
   if (cm.length >= 2) {
+    h += `<div style="height:10px"></div>` + lineChart({ id: 'cons-c', data: cm.map(x => ({ k: x.k, v: x.comb, x })), sel: state.consCSel, color: 'var(--ink)', area: true, showLast: true,
+      fmt: v => F1.format(v), unit: 'L/100 km eq.', avgLabel: 'Combinato · media mobile 3 mesi', aria: 'Consumo combinato in litri equivalenti, media mobile 3 mesi',
+      detail: d => `benzina ${F1.format(d.x.l)}<br>elettricità ${F1.format(d.x.elL)}` });
     h += `<div style="height:10px"></div>` + lineChart({ id: 'cons-l', data: cm.map(x => ({ k: x.k, v: x.l })), sel: state.consLSel, color: 'var(--fuel)', area: true, showLast: true,
       fmt: v => F1.format(v), unit: 'L/100 km', avgLabel: 'Benzina · media mobile 3 mesi', aria: 'Consumo di benzina, media mobile 3 mesi' });
     h += `<div style="height:10px"></div>` + lineChart({ id: 'cons-k', data: cm.map(x => ({ k: x.k, v: x.kwh })), sel: state.consKSel, color: 'var(--el)', area: true, showLast: true,
